@@ -4,9 +4,8 @@ import { useState, useEffect } from 'react';
 import { supabase, Cliente, Producto } from '@/lib/supabase/client';
 
 /**
- * ClientePage: One-click ordering page
- * Route: /[slug] - each client has their own page
- * Shows a single producto card with image and order button
+ * ClientePage: One-click ordering
+ * Mobile-first: big tap targets, single column, thumb-zone CTA
  */
 
 export default function ClientePage({ params }: { params: { slug: string } }) {
@@ -15,14 +14,12 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [ordering, setOrdering] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  // Fetch cliente and first active producto
   useEffect(() => {
     async function fetchData() {
       const supabaseClient = supabase;
 
-      // Get cliente by slug
       const { data: clienteData, error: clienteError } = await supabaseClient
         .from('clientes')
         .select('*')
@@ -31,15 +28,14 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
         .single();
 
       if (clienteError || !clienteData) {
-        setError('Cliente no encontrado');
+        setError('Establecimiento no encontrado');
         setLoading(false);
         return;
       }
 
       setCliente(clienteData);
 
-      // Get first active producto
-      const { data: productosData, error: productosError } = await supabaseClient
+      const { data: productosData } = await supabaseClient
         .from('productos')
         .select('*')
         .eq('activo', true)
@@ -47,17 +43,13 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
         .limit(1)
         .single();
 
-      if (!productosError && productosData) {
-        setProducto(productosData);
-      }
-
+      if (productosData) setProducto(productosData);
       setLoading(false);
     }
 
     fetchData();
   }, [params.slug]);
 
-  // Handle order button click
   async function handleMakeOrder() {
     if (!cliente || !producto) return;
 
@@ -73,107 +65,129 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Error desconocido');
+        throw new Error(result.error || 'Error');
       }
 
-      setToast('¡Pedido enviado!');
-      setTimeout(() => setToast(null), 2000);
+      setSuccess(true);
+
+      setTimeout(() => {
+        setSuccess(false);
+      }, 2500);
 
     } catch {
-      setToast('No se pudo enviar. Intenta de nuevo');
-      setTimeout(() => setToast(null), 3000);
+      alert('No se pudo enviar. Intentá de nuevo.');
     } finally {
       setOrdering(false);
     }
   }
 
-  // Loading
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-500">Cargando...</div>
+      <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-zinc-300 border-t-zinc-600 rounded-full animate-spin" />
+          <p className="text-sm text-zinc-500">Cargando...</p>
+        </div>
       </div>
     );
   }
 
-  // Error / 404
   if (error || !cliente) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center p-8">
-          <h1 className="text-xl font-semibold text-gray-900 mb-2">Página no encontrada</h1>
-          <p className="text-gray-500">{error || 'Cliente no encontrado'}</p>
+      <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-6">
+        <div className="text-center">
+          <div className="text-5xl mb-4">🔍</div>
+          <h1 className="text-xl font-semibold text-zinc-900 mb-2">No encontrado</h1>
+          <p className="text-zinc-500">{error}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-zinc-50 flex flex-col">
       {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-md mx-auto px-4 py-6 text-center">
-          <h1 className="text-2xl font-bold text-gray-900">{cliente.nombre}</h1>
+      <header className="bg-white border-b border-zinc-200 px-6 py-5">
+        <div className="max-w-md mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-zinc-900 rounded-xl flex items-center justify-center text-white text-lg">
+              {cliente.nombre.charAt(0)}
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold text-zinc-900">{cliente.nombre}</h1>
+              <p className="text-sm text-zinc-500">Pedí lo que necesites</p>
+            </div>
+          </div>
         </div>
       </header>
 
-      {/* Producto Card */}
-      <main className="max-w-md mx-auto px-4 py-8">
+      {/* Main Card */}
+      <main className="flex-1 flex items-center justify-center p-6">
         {producto ? (
-          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+          <div className="w-full max-w-md">
+            {/* Success Overlay */}
+            {success && (
+              <div className="fixed inset-0 bg-zinc-900/80 flex items-center justify-center z-50 animate-in fade-in duration-200">
+                <div className="bg-white rounded-3xl p-8 text-center animate-in zoom-in-95 duration-300">
+                  <div className="text-6xl mb-4">✅</div>
+                  <h2 className="text-xl font-semibold text-zinc-900 mb-2">¡Pedido enviado!</h2>
+                  <p className="text-zinc-500">Te avisamos cuando esté listo</p>
+                </div>
+              </div>
+            )}
+
             {/* Product Image */}
-            <div className="aspect-square bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center">
+            <div className="bg-gradient-to-br from-orange-100 via-amber-50 to-orange-100 rounded-3xl aspect-square flex items-center justify-center mb-6 overflow-hidden">
               <div className="text-center">
-                {/* Placeholder icon - replace with actual image */}
-                <div className="text-8xl mb-2">🥩</div>
-                <div className="text-lg font-semibold text-gray-700">Chorizo Premium</div>
+                <div className="text-[120px] leading-none mb-2 select-none">🥩</div>
               </div>
             </div>
 
-            {/* Product Info & Button */}
-            <div className="p-6">
+            {/* Product Info */}
+            <div className="bg-white rounded-3xl p-6 shadow-sm shadow-zinc-200/50">
               <div className="text-center mb-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-1">{producto.nombre}</h2>
-                <p className="text-3xl font-bold text-orange-600">${producto.precio}</p>
-                <p className="text-sm text-gray-500">por {producto.unidad_medida}</p>
+                <h2 className="text-2xl font-bold text-zinc-900 mb-1">{producto.nombre}</h2>
+                <p className="text-4xl font-bold text-orange-600">
+                  ${producto.precio}
+                  <span className="text-base font-normal text-zinc-400 ml-1">/ {producto.unidad_medida}</span>
+                </p>
               </div>
 
+              {/* CTA Button */}
               <button
                 onClick={handleMakeOrder}
                 disabled={ordering}
                 className={`
-                  w-full py-4 rounded-xl text-lg font-bold text-white
-                  transition-all duration-200
+                  w-full py-4 rounded-2xl text-lg font-semibold text-white
+                  transition-all duration-200 active:scale-95
                   ${ordering
-                    ? 'bg-gray-400 cursor-wait'
-                    : 'bg-orange-500 hover:bg-orange-600 active:scale-95 shadow-lg shadow-orange-500/30'
+                    ? 'bg-zinc-300 cursor-not-allowed'
+                    : 'bg-zinc-900 hover:bg-zinc-800 shadow-lg shadow-zinc-900/20'
                   }
                 `}
               >
-                {ordering ? 'Enviando...' : '¡Pedir!'}
+                {ordering ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Enviando...
+                  </span>
+                ) : (
+                  'Hacer Pedido'
+                )}
               </button>
+
+              <p className="text-center text-xs text-zinc-400 mt-3">
+                El pedido llega directo al comercio
+              </p>
             </div>
           </div>
         ) : (
-          <div className="text-center py-12 text-gray-500">
-            No hay productos disponibles
+          <div className="text-center">
+            <div className="text-5xl mb-4">📦</div>
+            <p className="text-zinc-500">Sin productos disponibles</p>
           </div>
         )}
       </main>
-
-      {/* Toast */}
-      {toast && (
-        <div className="fixed bottom-6 left-4 right-4 z-20">
-          <div className="max-w-md mx-auto">
-            <div className={`
-              px-4 py-3 rounded-xl text-center text-white font-medium
-              ${toast.includes('No se pudo') ? 'bg-red-500' : 'bg-green-500'}
-            `}>
-              {toast}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
