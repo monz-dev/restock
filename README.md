@@ -1,6 +1,6 @@
 # MVP Sistema de Pedidos
 
-Sistema de pedidos en tiempo real para comercios. Mobile-first, one-click ordering with realtime dashboard.
+Sistema de pedidos en tiempo real para comercios. Mobile-first, one-click ordering with realtime dashboard
 
 ## Quick Start
 
