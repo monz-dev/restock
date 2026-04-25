@@ -12,7 +12,8 @@ export interface Cliente {
   nombre: string;
   slug: string;
   codigo_qr?: string;
-  direccion?: string; // NEW: dirección del cliente (faltante en DB)
+  direccion?: string;
+  url_maps?: string;
   activo: boolean;
   created_at: string;
 }

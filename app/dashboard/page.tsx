@@ -11,6 +11,7 @@ import { supabase, Pedido, Cliente, Producto } from '@/lib/supabase/client';
 interface PedidoWithDetails extends Pedido {
   cliente_nombre?: string;
   cliente_direccion?: string;
+  cliente_url_maps?: string;
   producto_nombre?: string;
 }
 
@@ -44,10 +45,10 @@ export default function DashboardPage() {
 
         if (error) throw error;
 
-        const { data: clientes } = await supabase.from('clientes').select('id, nombre, direccion');
+        const { data: clientes } = await supabase.from('clientes').select('id, nombre, direccion, url_maps');
         const { data: productos } = await supabase.from('productos').select('id, nombre');
 
-        const clienteMap = new Map((clientes || []).map(c => [c.id, { nombre: c.nombre, direccion: c.direccion || '' }]));
+        const clienteMap = new Map((clientes || []).map(c => [c.id, { nombre: c.nombre, direccion: c.direccion || '', url_maps: c.url_maps || '' }]));
         const productoMap = new Map((productos || []).map(p => [p.id, p.nombre]));
 
         const pedidosWithDetails = (pedidos || []).map(p => {
@@ -56,6 +57,7 @@ export default function DashboardPage() {
             ...p,
             cliente_nombre: cliente?.nombre,
             cliente_direccion: cliente?.direccion,
+            cliente_url_maps: cliente?.url_maps,
             producto_nombre: productoMap.get(p.producto_id)
           };
         });
@@ -83,13 +85,14 @@ export default function DashboardPage() {
         const newPedido = payload.new as Pedido;
 
         const { data: cliente } = await supabase
-          .from('clientes').select('nombre').eq('id', newPedido.cliente_id).single();
+          .from('clientes').select('nombre, url_maps').eq('id', newPedido.cliente_id).single();
         const { data: producto } = await supabase
           .from('productos').select('nombre').eq('id', newPedido.producto_id).single();
 
         const pedidoWithDetails: PedidoWithDetails = {
           ...newPedido,
           cliente_nombre: cliente?.nombre,
+          cliente_url_maps: cliente?.url_maps,
           producto_nombre: producto?.nombre
         };
 
@@ -430,12 +433,17 @@ export default function DashboardPage() {
                           {chip.label}
                         </span>
                       </div>
-                      <p className={`text-body-sm flex items-center gap-1 ${
-                        darkMode ? 'text-on-surface-variant' : 'text-gray-500'
-                      }`}>
-                        <span className="material-icons text-sm">location_on</span>
-                        {pedido.cliente_direccion || 'Sin dirección'}
-                      </p>
+                      <a 
+                          href={pedido.cliente_url_maps || '#'} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className={`text-body-sm flex items-center gap-1 hover:underline ${
+                            darkMode ? 'text-on-surface-variant' : 'text-gray-500'
+                          } ${!pedido.cliente_url_maps ? 'pointer-events-none' : ''}`}
+                        >
+                          <span className="material-icons text-sm">location_on</span>
+                          {pedido.cliente_direccion || 'Sin dirección'}
+                        </a>
                     </div>
                     <div className="p-6 flex-grow">
                       <div className="space-y-3">
