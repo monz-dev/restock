@@ -13,10 +13,9 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [ordering, setOrdering] = useState(false);
+  const [ordering, setOrdering] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
-  const [selectedProducto, setSelectedProducto] = useState<Producto | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -45,7 +44,6 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
 
       if (productosData) {
         setProductos(productosData);
-        setSelectedProducto(productosData[0] || null);
       }
       setLoading(false);
     }
@@ -53,16 +51,16 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
     fetchData();
   }, [params.slug]);
 
-  async function handleMakeOrder() {
-    if (!cliente || !selectedProducto) return;
+  async function handleMakeOrder(producto: Producto) {
+    if (!cliente) return;
 
-    setOrdering(true);
+    setOrdering(producto.id);
 
     try {
       const response = await fetch(`/api/pedido?cliente_slug=${params.slug}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ producto_id: selectedProducto.id })
+        body: JSON.stringify({ producto_id: producto.id })
       });
 
       const result = await response.json();
@@ -80,7 +78,7 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
     } catch {
       alert('No se pudo enviar. Intentá de nuevo.');
     } finally {
-      setOrdering(false);
+      setOrdering(null);
     }
   }
 
@@ -157,77 +155,77 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
             </div>
           )}
 
-          {/* Product Display Card */}
-          {selectedProducto ? (
-            <div className={`${
-              darkMode 
-                ? 'bg-surface-container border border-outline-variant' 
-                : 'bg-white border border-gray-200'
-            } rounded-xl overflow-hidden`}>
-              {/* Product Image / Icon */}
-              <div className={`h-40 flex items-center justify-center ${
-                darkMode 
-                  ? 'bg-surface-high/30' 
-                  : 'bg-gray-100'
-              }`}>
-                <span className="material-icons text-6xl text-on-surface-variant select-none">
-                  inventory_2
-                </span>
-              </div>
-
-              {/* Product Info */}
-              <div className="p-4">
-                <div className="text-center mb-4">
-                  <h2 className={`text-xl font-bold mb-1 ${
-                    darkMode ? 'text-on-surface' : 'text-gray-900'
+          {/* Products Grid */}
+          {productos.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {productos.map(producto => (
+                <div 
+                  key={producto.id}
+                  className={`${
+                    darkMode 
+                      ? 'bg-surface-container border border-outline-variant' 
+                      : 'bg-white border border-gray-200'
+                  } rounded-xl overflow-hidden`}>
+                  {/* Product Image / Icon */}
+                  <div className={`h-24 flex items-center justify-center ${
+                    darkMode 
+                      ? 'bg-surface-high/30' 
+                      : 'bg-gray-100'
                   }`}>
-                    {selectedProducto.nombre}
-                  </h2>
-                  <p className={`text-2xl font-bold ${
-                    darkMode ? 'text-primary' : 'text-blue-600'
-                  }`}>
-                    ${selectedProducto.precio}
-                    <span className={`text-sm font-normal ml-1 ${
-                      darkMode ? 'text-on-surface-variant' : 'text-gray-400'
-                    }`}>
-                      / {selectedProducto.unidad_medida}
+                    <span className="material-icons text-4xl text-on-surface-variant select-none">
+                      inventory_2
                     </span>
-                  </p>
+                  </div>
+
+                  {/* Product Info */}
+                  <div className="p-3">
+                    <div className="text-center mb-3">
+                      <h2 className={`text-base font-bold mb-1 ${
+                        darkMode ? 'text-on-surface' : 'text-gray-900'
+                      }`}>
+                        {producto.nombre}
+                      </h2>
+                      <p className={`text-lg font-bold ${
+                        darkMode ? 'text-primary' : 'text-blue-600'
+                      }`}>
+                        ${producto.precio}
+                        <span className={`text-xs font-normal ml-1 ${
+                          darkMode ? 'text-on-surface-variant' : 'text-gray-400'
+                        }`}>
+                          / {producto.unidad_medida}
+                        </span>
+                      </p>
+                    </div>
+
+                    {/* CTA Button */}
+                    <button
+                      onClick={() => handleMakeOrder(producto)}
+                      disabled={ordering === producto.id}
+                      className={`
+                        w-full py-2 rounded-lg text-sm font-semibold
+                        transition-all duration-200 active:scale-95
+                        ${darkMode
+                          ? ordering === producto.id
+                            ? 'bg-surface-high text-on-surface-variant cursor-not-allowed'
+                            : 'bg-primary-container hover:bg-primary text-on-primary-container'
+                          : ordering === producto.id
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-gray-900 hover:bg-gray-800 text-white'
+                        }
+                      `}
+                    >
+                      {ordering === producto.id ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Enviando...
+                        </span>
+                      ) : (
+                        'Hacer Pedido'
+                      )}
+                    </button>
+                  </div>
                 </div>
-
-                {/* CTA Button */}
-                <button
-                  onClick={handleMakeOrder}
-                  disabled={ordering}
-                  className={`
-                    w-full py-3 rounded-lg text-base font-semibold
-                    transition-all duration-200 active:scale-95
-                    ${darkMode
-                      ? ordering
-                        ? 'bg-surface-high text-on-surface-variant cursor-not-allowed'
-                        : 'bg-primary-container hover:bg-primary text-on-primary-container shadow-lg'
-                      : ordering
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-gray-900 hover:bg-gray-800 text-white shadow-lg'
-                    }
-                  `}
-                >
-                  {ordering ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Enviando...
-                    </span>
-                  ) : (
-                    'Hacer Pedido'
-                  )}
-                </button>
-
-                <p className={`text-center text-xs mt-3 ${
-                  darkMode ? 'text-on-surface-variant' : 'text-gray-400'
-                }`}>
-                  El pedido llega directo al comercio
-                </p>
-              </div>
+              ))}
             </div>
           ) : (
             <div className="text-center py-8">
