@@ -92,7 +92,7 @@ module.exports = {
       },
       // Typography
       fontFamily: {
-        manrope: ['Manrope', 'sans-serif'],
+        manrope: ['Manrope'],
         inter: ['Inter', 'sans-serif'],
         'label-caps': ['Inter', 'sans-serif'],
         'data-mono': ['Inter', 'sans-serif'],
