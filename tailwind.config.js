@@ -9,10 +9,6 @@ module.exports = {
     extend: {
       fontFamily: {
         'material-icons': ['Material Icons'],
-        manrope: ['Manrope', 'sans-serif'],
-        inter: ['Inter', 'sans-serif'],
-        'label-caps': ['Inter', 'sans-serif'],
-        'data-mono': ['Inter', 'sans-serif'],
       },
       // Colors - Slate Precision Dark Mode
       colors: {
