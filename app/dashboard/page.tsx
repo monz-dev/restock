@@ -213,17 +213,17 @@ export default function DashboardPage() {
       {/* TopAppBar */}
       <header className={`fixed top-0 left-0 z-50 flex justify-between items-center w-full px-6 h-16 ${
         darkMode 
-          ? 'bg-surface-bright border-b border-outline-variant' 
+          ? 'bg-slate-900 border-b border-slate-800' 
           : 'bg-white border-b border-gray-200'
       }`}>
         <div className="flex items-center gap-4">
           <button className={`p-2 rounded transition-colors ${
-            darkMode ? 'text-primary hover:bg-surface-container-high' : 'text-gray-700 hover:bg-gray-100'
+            darkMode ? 'text-sky-400 hover:bg-slate-800' : 'text-gray-700 hover:bg-gray-100'
           }`} aria-label="Menú">
-            <span className="material-icons">menu</span>
+            <span className="material-symbols-outlined">menu</span>
           </button>
           <h1 className={`font-manrope text-sm font-semibold tracking-tight uppercase ${
-            darkMode ? 'text-primary' : 'text-gray-900'
+            darkMode ? 'text-sky-400' : 'text-gray-900'
           }`}>
             Pedidos de Clientes
           </h1>
@@ -234,11 +234,11 @@ export default function DashboardPage() {
             aria-label="Cambiar tema" 
             className={`p-2 rounded transition-colors ${
               darkMode 
-                ? 'text-primary hover:bg-surface-container-high' 
+                ? 'text-sky-400 hover:bg-slate-800' 
                 : 'text-gray-700 hover:bg-gray-100'
             }`}
           >
-            <span className="material-icons">
+            <span className="material-symbols-outlined">
               {darkMode ? 'light_mode' : 'dark_mode'}
             </span>
           </button>
@@ -418,19 +418,20 @@ export default function DashboardPage() {
                         : 'bg-white border-gray-200'
                     }`}
                   >
-                    <div className={`p-6 border-b ${
-                      darkMode 
-                        ? 'border-outline-variant bg-surface-high/30' 
-                        : 'border-gray-200 bg-gray-50'
-                    }`}>
+                    <div className="p-6 border-b border-outline-variant bg-surface-container-high/50">
                       <div className="flex justify-between items-start mb-2">
                         <h3 className={`font-h2 text-body-md font-bold truncate ${
                           darkMode ? 'text-primary' : 'text-blue-600'
                         }`}>
                           {pedido.cliente_nombre || 'Cliente'}
                         </h3>
-                        <span className={`px-2 py-1 text-[10px] font-bold rounded uppercase ${chip.className}`}>
-                          {chip.label}
+                        <span className={`px-2 py-1 text-[10px] font-bold rounded uppercase border ${
+                          pedido.estado === 'pendiente' ? 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20' :
+                          pedido.estado === 'despachado' ? 'bg-sky-400/10 text-sky-400 border-sky-400/20' :
+                          pedido.estado === 'entregado' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                          'bg-green-500/10 text-green-400 border-green-500/20'
+                        }`}>
+                          {pedido.estado}
                         </span>
                       </div>
                       <a 
@@ -441,41 +442,39 @@ export default function DashboardPage() {
                             darkMode ? 'text-on-surface-variant' : 'text-gray-500'
                           } ${!pedido.cliente_url_maps ? 'pointer-events-none' : ''}`}
                         >
-                          <span className="material-icons text-sm">location_on</span>
+                          <span className="material-symbols-outlined text-sm">location_on</span>
                           {pedido.cliente_direccion || 'Sin dirección'}
                         </a>
                     </div>
                     <div className="p-6 flex-grow">
                       <div className="space-y-3">
                         <div className="flex justify-between items-center">
-                          <span className={`text-body-sm font-medium truncate ${
+                          <span className={`text-body-sm text-on-surface font-medium ${
                             darkMode ? 'text-on-surface' : 'text-gray-900'
                           }`}>
                             {pedido.cantidad}x {pedido.producto_nombre || 'Producto'}
                           </span>
-                          <span className={`font-data-mono text-data-mono ${
+                          <span className={`font-data-mono text-data-mono text-on-surface-variant ${
                             darkMode ? 'text-on-surface-variant' : 'text-gray-500'
                           }`}>
                             #{pedido.id.slice(0, 4)}
                           </span>
                         </div>
-                        <div className={`text-[12px] flex items-center gap-2 ${
+                        <div className={`text-[12px] text-on-surface-variant flex items-center gap-2 ${
                           darkMode ? 'text-on-surface-variant' : 'text-gray-400'
                         }`}>
-                          <span className="material-icons text-sm">schedule</span>
+                          <span className="material-symbols-outlined text-sm">schedule</span>
                           {formatTime(pedido.created_at)} - {formatDate(pedido.created_at)}
                         </div>
                       </div>
                     </div>
-                    <div className={`p-4 mt-auto ${
-                      darkMode ? 'bg-surface-low' : 'bg-gray-50'
-                    }`}>
+                    <div className="p-4 bg-surface-container-low mt-auto">
                       <button 
                         onClick={() => toggleAtendido(pedido)}
-                        className={`w-full py-3 rounded font-label-caps uppercase transition-all active:scale-95 ${
+                        className={`w-full bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 py-3 rounded text-label-caps uppercase transition-all active:scale-95 ${
                           darkMode 
-                            ? 'bg-surface-high hover:bg-surface-highest text-primary border border-outline-variant'
-                            : 'bg-gray-200 hover:bg-gray-300 text-gray-700 border border-gray-300'
+                            ? '' 
+                            : ''
                         }`}
                       >
                         Cambiar Estado
@@ -490,48 +489,40 @@ export default function DashboardPage() {
       </main>
 
       {/* BottomNavBar */}
-      <nav className={`fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-16 border-t ${
+      <nav className={`fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-16 ${
         darkMode 
-          ? 'bg-surface-bright/95 backdrop-blur-sm border-outline-variant'
+          ? 'bg-slate-900/95 backdrop-blur-sm border-t border-slate-800'
           : 'bg-white/95 backdrop-blur-sm border-gray-200'
       }`}>
         <a className={`flex flex-col items-center justify-center transition-all active:scale-90 duration-150 ${
-          darkMode ? 'text-surface-highest hover:text-primary' : 'text-gray-500 hover:text-gray-700'
+          darkMode ? 'text-slate-500 hover:text-sky-300' : 'text-gray-500 hover:text-gray-700'
         }`} href="/">
-          <span className="material-icons">dashboard</span>
-          <span className={`font-manrope text-[10px] font-medium tracking-wide uppercase ${
-            darkMode ? '' : 'text-gray-600'
-          }`}>
+          <span className="material-symbols-outlined">dashboard</span>
+          <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">
             Dashboard
           </span>
         </a>
-        <a className={`flex flex-col items-center justify-center active:scale-90 duration-150 ${
-          darkMode ? 'text-primary font-bold' : 'text-gray-900 font-semibold'
+        <a className={`flex flex-col items-center justify-center text-sky-400 font-bold active:scale-90 duration-150 ${
+          darkMode ? '' : ''
         }`} href="/dashboard">
-          <span className="material-icons">shopping_cart</span>
-          <span className={`font-manrope text-[10px] font-medium tracking-wide uppercase ${
-            darkMode ? '' : 'text-gray-600'
-          }`}>
-            Pedidos
+          <span className="material-symbols-outlined">shopping_cart</span>
+          <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">
+            Órdenes
           </span>
         </a>
         <a className={`flex flex-col items-center justify-center transition-all active:scale-90 duration-150 ${
-          darkMode ? 'text-surface-highest hover:text-primary' : 'text-gray-500 hover:text-gray-700'
+          darkMode ? 'text-slate-500 hover:text-sky-300' : 'text-gray-500 hover:text-gray-700'
         }`} href="/clientes">
-          <span className="material-icons">groups</span>
-          <span className={`font-manrope text-[10px] font-medium tracking-wide uppercase ${
-            darkMode ? '' : 'text-gray-600'
-          }`}>
+          <span className="material-symbols-outlined">groups</span>
+          <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">
             Clientes
           </span>
         </a>
         <a className={`flex flex-col items-center justify-center transition-all active:scale-90 duration-150 ${
-          darkMode ? 'text-surface-highest hover:text-primary' : 'text-gray-500 hover:text-gray-700'
+          darkMode ? 'text-slate-500 hover:text-sky-300' : 'text-gray-500 hover:text-gray-700'
         }`} href="#">
-          <span className="material-icons">settings</span>
-          <span className={`font-manrope text-[10px] font-medium tracking-wide uppercase ${
-            darkMode ? '' : 'text-gray-600'
-          }`}>
+          <span className="material-symbols-outlined">settings</span>
+          <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">
             Ajustes
           </span>
         </a>
