@@ -5,16 +5,18 @@ import { supabase, Cliente, Producto } from '@/lib/supabase/client';
 
 /**
  * ClientePage: One-click ordering
- * Mobile-first: big tap targets, single column, thumb-zone CTA
+ * Styled with Slate Precision design system
  */
 
 export default function ClientePage({ params }: { params: { slug: string } }) {
   const [cliente, setCliente] = useState<Cliente | null>(null);
-  const [producto, setProducto] = useState<Producto | null>(null);
+  const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [ordering, setOrdering] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
+  const [selectedProducto, setSelectedProducto] = useState<Producto | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -39,11 +41,12 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
         .from('productos')
         .select('*')
         .eq('activo', true)
-        .order('nombre')
-        .limit(1)
-        .single();
+        .order('nombre');
 
-      if (productosData) setProducto(productosData);
+      if (productosData) {
+        setProductos(productosData);
+        setSelectedProducto(productosData[0] || null);
+      }
       setLoading(false);
     }
 
@@ -51,7 +54,7 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
   }, [params.slug]);
 
   async function handleMakeOrder() {
-    if (!cliente || !producto) return;
+    if (!cliente || !selectedProducto) return;
 
     setOrdering(true);
 
@@ -59,7 +62,7 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
       const response = await fetch(`/api/pedido?cliente_slug=${params.slug}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ producto_id: producto.id })
+        body: JSON.stringify({ producto_id: selectedProducto.id })
       });
 
       const result = await response.json();
@@ -81,12 +84,16 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
     }
   }
 
+  function toggleDarkMode() {
+    setDarkMode(!darkMode);
+  }
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-surface grid-dot' : 'bg-gray-50'}`}>
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-3 border-zinc-300 border-t-zinc-600 rounded-full animate-spin" />
-          <p className="text-sm text-zinc-500">Cargando...</p>
+          <div className={`w-8 h-8 border-4 ${darkMode ? 'border-surface-container-high border-t-primary-container' : 'border-gray-300 border-t-gray-600'} rounded-full animate-spin`} />
+          <p className={`text-sm ${darkMode ? 'text-on-surface-variant' : 'text-gray-500'}`}>Cargando...</p>
         </div>
       </div>
     );
@@ -94,99 +101,143 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
 
   if (error || !cliente) {
     return (
-      <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-6">
+      <div className={`min-h-screen flex items-center justify-center p-6 ${darkMode ? 'bg-surface grid-dot' : 'bg-gray-50'}`}>
         <div className="text-center">
-          <div className="text-5xl mb-4">🔍</div>
-          <h1 className="text-xl font-semibold text-zinc-900 mb-2">No encontrado</h1>
-          <p className="text-zinc-500">{error}</p>
+          <span className="material-icons text-6xl text-outline mb-4">search_off</span>
+          <h1 className={`text-xl font-semibold mb-2 ${darkMode ? 'text-on-surface' : 'text-gray-900'}`}>No encontrado</h1>
+          <p className={darkMode ? 'text-on-surface-variant' : 'text-gray-500'}>{error}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-white border-b border-zinc-200 px-6 py-5">
-        <div className="max-w-md mx-auto">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-zinc-900 rounded-xl flex items-center justify-center text-white text-lg">
-              {cliente.nombre.charAt(0)}
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold text-zinc-900">{cliente.nombre}</h1>
-              <p className="text-sm text-zinc-500">Pedí lo que necesites</p>
-            </div>
-          </div>
+    <div className={`min-h-screen flex flex-col ${darkMode ? 'bg-surface grid-dot' : 'bg-gray-50'}`}>
+      {/* TopAppBar */}
+      <header className={`fixed top-0 left-0 z-50 flex justify-between items-center w-full px-6 h-16 ${
+        darkMode 
+          ? 'bg-surface-bright border-b border-outline-variant' 
+          : 'bg-white border-b border-gray-200'
+      }`}>
+        <div className="flex items-center gap-4">
+          <h1 className={`font-h2 text-h2 tracking-tight ${darkMode ? 'text-primary' : 'text-gray-900'}`}>
+            {cliente.nombre}
+          </h1>
         </div>
+        <button 
+          onClick={toggleDarkMode} 
+          aria-label="Cambiar tema"
+          className={`p-2 rounded transition-colors ${
+            darkMode 
+              ? 'text-primary hover:bg-surface-container-high' 
+              : 'text-gray-600 hover:bg-gray-100'
+          }`}
+        >
+          <span className="material-icons">
+            {darkMode ? 'light_mode' : 'dark_mode'}
+          </span>
+        </button>
       </header>
 
-      {/* Main Card */}
-      <main className="flex-1 flex items-center justify-center p-6">
-        {producto ? (
-          <div className="w-full max-w-md">
-            {/* Success Overlay */}
-            {success && (
-              <div className="fixed inset-0 bg-zinc-900/80 flex items-center justify-center z-50 animate-in fade-in duration-200">
-                <div className="bg-white rounded-3xl p-8 text-center animate-in zoom-in-95 duration-300">
-                  <div className="text-6xl mb-4">✅</div>
-                  <h2 className="text-xl font-semibold text-zinc-900 mb-2">¡Pedido enviado!</h2>
-                  <p className="text-zinc-500">Te avisamos cuando esté listo</p>
-                </div>
-              </div>
-            )}
-
-            {/* Product Image */}
-            <div className="bg-gradient-to-br from-orange-100 via-amber-50 to-orange-100 rounded-3xl aspect-square flex items-center justify-center mb-6 overflow-hidden">
-              <div className="text-center">
-                <div className="text-[120px] leading-none mb-2 select-none">🥩</div>
+      {/* Main Content */}
+      <main className="flex-1 flex items-center justify-center p-6 pt-24">
+        <div className="w-full max-w-md">
+          {/* Success Overlay */}
+          {success && (
+            <div className="fixed inset-0 bg-surface-bright/80 flex items-center justify-center z-50 animate-in fade-in duration-200">
+              <div className={`${
+                darkMode 
+                  ? 'bg-surface-container border border-outline-variant' 
+                  : 'bg-white border border-gray-200'
+              } rounded-3xl p-8 text-center animate-in zoom-in-95 duration-300`}>
+                <span className="material-icons text-6xl text-green-500 mb-4">check_circle</span>
+                <h2 className={`text-xl font-semibold mb-2 ${darkMode ? 'text-on-surface' : 'text-gray-900'}`}>¡Pedido enviado!</h2>
+                <p className={darkMode ? 'text-on-surface-variant' : 'text-gray-500'}>Te avisamos cuando esté listo</p>
               </div>
             </div>
+          )}
 
-            {/* Product Info */}
-            <div className="bg-white rounded-3xl p-6 shadow-sm shadow-zinc-200/50">
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold text-zinc-900 mb-1">{producto.nombre}</h2>
-                <p className="text-4xl font-bold text-orange-600">
-                  ${producto.precio}
-                  <span className="text-base font-normal text-zinc-400 ml-1">/ {producto.unidad_medida}</span>
+          {/* Product Display Card */}
+          {selectedProducto ? (
+            <div className={`${
+              darkMode 
+                ? 'bg-surface-container border border-outline-variant' 
+                : 'bg-white border border-gray-200'
+            } rounded-xl overflow-hidden`}>
+              {/* Product Image / Icon */}
+              <div className={`h-40 flex items-center justify-center ${
+                darkMode 
+                  ? 'bg-surface-high/30' 
+                  : 'bg-gray-100'
+              }`}>
+                <span className="material-icons text-6xl text-on-surface-variant select-none">
+                  inventory_2
+                </span>
+              </div>
+
+              {/* Product Info */}
+              <div className="p-4">
+                <div className="text-center mb-4">
+                  <h2 className={`text-xl font-bold mb-1 ${
+                    darkMode ? 'text-on-surface' : 'text-gray-900'
+                  }`}>
+                    {selectedProducto.nombre}
+                  </h2>
+                  <p className={`text-2xl font-bold ${
+                    darkMode ? 'text-primary' : 'text-blue-600'
+                  }`}>
+                    ${selectedProducto.precio}
+                    <span className={`text-sm font-normal ml-1 ${
+                      darkMode ? 'text-on-surface-variant' : 'text-gray-400'
+                    }`}>
+                      / {selectedProducto.unidad_medida}
+                    </span>
+                  </p>
+                </div>
+
+                {/* CTA Button */}
+                <button
+                  onClick={handleMakeOrder}
+                  disabled={ordering}
+                  className={`
+                    w-full py-3 rounded-lg text-base font-semibold
+                    transition-all duration-200 active:scale-95
+                    ${darkMode
+                      ? ordering
+                        ? 'bg-surface-high text-on-surface-variant cursor-not-allowed'
+                        : 'bg-primary-container hover:bg-primary text-on-primary-container shadow-lg'
+                      : ordering
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-gray-900 hover:bg-gray-800 text-white shadow-lg'
+                    }
+                  `}
+                >
+                  {ordering ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Enviando...
+                    </span>
+                  ) : (
+                    'Hacer Pedido'
+                  )}
+                </button>
+
+                <p className={`text-center text-xs mt-3 ${
+                  darkMode ? 'text-on-surface-variant' : 'text-gray-400'
+                }`}>
+                  El pedido llega directo al comercio
                 </p>
               </div>
-
-              {/* CTA Button */}
-              <button
-                onClick={handleMakeOrder}
-                disabled={ordering}
-                className={`
-                  w-full py-4 rounded-2xl text-lg font-semibold text-white
-                  transition-all duration-200 active:scale-95
-                  ${ordering
-                    ? 'bg-zinc-300 cursor-not-allowed'
-                    : 'bg-zinc-900 hover:bg-zinc-800 shadow-lg shadow-zinc-900/20'
-                  }
-                `}
-              >
-                {ordering ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Enviando...
-                  </span>
-                ) : (
-                  'Hacer Pedido'
-                )}
-              </button>
-
-              <p className="text-center text-xs text-zinc-400 mt-3">
-                El pedido llega directo al comercio
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <span className="material-icons text-5xl text-outline mb-2">inventory_2</span>
+              <p className={darkMode ? 'text-on-surface-variant' : 'text-gray-500'}>
+                Sin productos disponibles
               </p>
             </div>
-          </div>
-        ) : (
-          <div className="text-center">
-            <div className="text-5xl mb-4">📦</div>
-            <p className="text-zinc-500">Sin productos disponibles</p>
-          </div>
-        )}
+          )}
+        </div>
       </main>
     </div>
   );

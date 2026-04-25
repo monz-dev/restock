@@ -2,10 +2,78 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Material Icons */
+.material-icons {
+  font-size: 24px;
+  display: inline-block;
+  font-weight: normal;
+  font-style: normal;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Material Symbols - fallback */
+.material-symbols-outlined {
+  font-size: 24px;
+  display: inline-block;
+}
+
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 249, 250, 251;
-  --background-end-rgb: 255, 255, 255;
+  /* Colors - Slate Precision Dark Mode */
+  @layer base {
+    :root {
+      --surface: #081425;
+      --surface-dim: #081425;
+      --surface-bright: #2f3a4c;
+      --surface-lowest: #040e1f;
+      --surface-low: #111c2d;
+      --surface-container: #152031;
+      --surface-high: #1f2a3c;
+      --surface-highest: #2a3548;
+      --on-surface: #d8e3fb;
+      --on-surface-variant: #bdc8d1;
+      --outline: #87929a;
+      --outline-variant: #3e484f;
+      --surface-tint: #7bd0ff;
+      
+      /* Primary */
+      --primary: #8ed5ff;
+      --primary-container: #38bdf8;
+      --on-primary: #00354a;
+      --on-primary-container: #004965;
+      --primary-fixed: #c4e7ff;
+      --primary-fixed-dim: #7bd0ff;
+      --on-primary-fixed: #001e2c;
+      --on-primary-fixed-variant: #004c69;
+      
+      /* Secondary */
+      --secondary: #b9c8de;
+      --secondary-container: #39485a;
+      --on-secondary: #233143;
+      --on-secondary-container: #a7b6cc;
+      
+      /* Tertiary */
+      --tertiary: #c5cce6;
+      --tertiary-container: #a9b1ca;
+      --on-tertiary: #283044;
+      --on-tertiary-container: #3c4459;
+      
+      /* Error */
+      --error: #ffb4ab;
+      --error-container: #93000a;
+      --on-error: #690005;
+      --on-error-container: #ffdad6;
+      
+      /* Background */
+      --background: #081425;
+      --on-background: #d8e3fb;
+      --surface-variant: #2a3548;
+    }
+  }
 }
 
 * {
@@ -20,16 +88,73 @@ html {
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--surface);
+  color: var(--on-surface);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+/* Grid dot pattern background */
+.grid-dot {
+  background-image: radial-gradient(var(--outline-variant) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Material Symbols */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Typography Classes */
+.font-h1 {
+  font-family: 'Manrope', sans-serif;
+  font-size: 30px;
+  line-height: 38px;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+.font-h2 {
+  font-family: 'Manrope', sans-serif;
+  font-size: 24px;
+  line-height: 32px;
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+
+.font-body-md {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  line-height: 24px;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
+.font-body-sm {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
+.font-label-caps {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.font-data-mono {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: -0.01em;
+  font-weight: 500;
 }
 
 /* Mobile-first responsive */
@@ -54,8 +179,7 @@ button {
 
 /* Smooth transitions */
 * {
-  transition-property: background-color, border-color, color, fill, stroke,
-    opacity, box-shadow, transform;
+  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
 }
@@ -67,14 +191,81 @@ button {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--surface-low);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: var(--outline-variant);
   border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a1a1a1;
+  background: var(--outline);
+}
+
+/* Status Chips */
+.chip-pendiente {
+  background-color: rgba(251, 191, 36, 0.1);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.2);
+}
+
+.chip-despachado {
+  background-color: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.chip-entregado {
+  background-color: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+/* Card elevation levels */
+.card-elevation-0 {
+  background-color: var(--surface);
+}
+
+.card-elevation-1 {
+  background-color: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+}
+
+.card-elevation-2 {
+  background-color: var(--surface-container);
+  border: 1px solid var(--outline);
+}
+
+/* Input field inset style */
+.input-inset {
+  background-color: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+}
+
+.input-inset:focus {
+  border-color: var(--primary-container);
+  outline: none;
+}
+
+/* Primary button */
+.btn-primary {
+  background-color: var(--primary-container);
+  color: var(--on-primary-container);
+  font-weight: 600;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary);
+}
+
+/* Secondary button */
+.btn-secondary {
+  background-color: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  color: var(--on-surface);
+}
+
+.btn-secondary:hover {
+  background-color: var(--surface-high);
 }

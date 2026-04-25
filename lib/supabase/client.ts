@@ -12,6 +12,7 @@ export interface Cliente {
   nombre: string;
   slug: string;
   codigo_qr?: string;
+  direccion?: string; // NEW: dirección del cliente (faltante en DB)
   activo: boolean;
   created_at: string;
 }
@@ -30,9 +31,11 @@ export interface Pedido {
   cliente_id: string;
   producto_id: string;
   cantidad: number;
-  estado: 'pendiente' | 'atendido';
+  // Extended estados para workflow completo: pendiente -> despachado -> entregado
+  estado: 'pendiente' | 'despachado' | 'entregado' | 'atendido';
   created_at: string;
   // Joined fields
   cliente_nombre?: string;
+  cliente_direccion?: string;
   producto_nombre?: string;
 }

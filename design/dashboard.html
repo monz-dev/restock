@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Manrope:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .grid-dot {
+            background-image: radial-gradient(#334155 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#a7b6cc",
+                        "on-surface": "#d8e3fb",
+                        "tertiary-fixed-dim": "#bec6e0",
+                        "on-tertiary": "#283044",
+                        "secondary-container": "#39485a",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed": "#001e2c",
+                        "surface": "#081425",
+                        "surface-bright": "#2f3a4c",
+                        "on-primary": "#00354a",
+                        "error-container": "#93000a",
+                        "on-secondary-fixed": "#0d1c2d",
+                        "surface-container": "#152031",
+                        "inverse-on-surface": "#263143",
+                        "surface-tint": "#7bd0ff",
+                        "surface-container-lowest": "#040e1f",
+                        "on-primary-container": "#004965",
+                        "on-secondary": "#233143",
+                        "on-tertiary-container": "#3c4459",
+                        "on-surface-variant": "#bdc8d1",
+                        "surface-container-high": "#1f2a3c",
+                        "tertiary": "#c5cce6",
+                        "secondary-fixed-dim": "#b9c8de",
+                        "on-tertiary-fixed": "#131b2e",
+                        "primary-container": "#38bdf8",
+                        "on-background": "#d8e3fb",
+                        "surface-dim": "#081425",
+                        "tertiary-container": "#a9b1ca",
+                        "on-tertiary-fixed-variant": "#3f465c",
+                        "surface-container-low": "#111c2d",
+                        "secondary": "#b9c8de",
+                        "background": "#081425",
+                        "surface-variant": "#2a3548",
+                        "outline": "#87929a",
+                        "on-secondary-fixed-variant": "#39485a",
+                        "on-error": "#690005",
+                        "primary": "#8ed5ff",
+                        "primary-fixed-dim": "#7bd0ff",
+                        "inverse-primary": "#00668a",
+                        "outline-variant": "#3e484f",
+                        "on-primary-fixed-variant": "#004c69",
+                        "inverse-surface": "#d8e3fb",
+                        "primary-fixed": "#c4e7ff",
+                        "surface-container-highest": "#2a3548",
+                        "error": "#ffb4ab",
+                        "secondary-fixed": "#d4e4fa",
+                        "tertiary-fixed": "#dae2fd"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "component-padding-y": "12px",
+                        "unit": "4px",
+                        "section-gap": "48px",
+                        "component-padding-x": "16px",
+                        "gutter": "24px",
+                        "container-margin": "32px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Inter"],
+                        "data-mono": ["Inter"],
+                        "h2": ["Manrope"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "h1": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "data-mono": ["14px", {"lineHeight": "20px", "letterSpacing": "-0.01em", "fontWeight": "500"}],
+                        "h2": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "h1": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md selection:bg-primary-container selection:text-on-primary-container min-h-screen grid-dot">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 z-50 bg-slate-900 border-b border-slate-800 flex justify-between items-center w-full px-6 h-16">
+<div class="flex items-center gap-4">
+<button class="text-sky-400 hover:bg-slate-800 transition-colors p-2 rounded">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h1 class="font-['Manrope'] text-sm font-semibold tracking-tight uppercase text-sky-400">Pedidos de Clientes</h1>
+</div>
+<div class="flex items-center gap-2"><button aria-label="Cambiar tema" class="text-sky-400 hover:bg-slate-800 transition-colors p-2 rounded flex items-center justify-center">
+<span class="material-symbols-outlined">light_mode</span>
+</button></div>
+</header>
+<!-- Main Content -->
+<main class="pt-24 pb-32 px-6 max-w-7xl mx-auto w-full">
+<!-- Search and Overview Section -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-gutter mb-section-gap">
+<!-- Search Bar -->
+<div class="lg:col-span-12">
+<div class="relative bg-surface-container rounded border border-outline-variant p-1 group focus-within:border-primary-container transition-colors">
+<div class="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-outline group-focus-within:text-primary-container">search</span>
+</div>
+<input class="w-full bg-transparent border-none focus:ring-0 pl-12 pr-4 py-3 text-body-md placeholder:text-outline-variant" placeholder="Buscar por cliente, pedido o dirección..." type="text"/>
+</div>
+</div>
+<!-- Status Overview Cards (Bento Style) -->
+<div class="lg:col-span-4 bg-surface-container border border-outline-variant p-6 rounded-lg">
+<div class="flex justify-between items-start mb-4">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Total Hoy</span>
+<span class="material-symbols-outlined text-primary">calendar_today</span>
+</div>
+<div class="font-h1 text-h1 text-on-surface">124</div>
+<div class="mt-2 text-body-sm text-primary flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+<span>+12% vs ayer</span>
+</div>
+</div>
+<div class="lg:col-span-4 bg-surface-container border border-outline-variant p-6 rounded-lg">
+<div class="flex justify-between items-start mb-4">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Pendientes</span>
+<span class="material-symbols-outlined text-error">pending_actions</span>
+</div>
+<div class="font-h1 text-h1 text-on-surface">18</div>
+<div class="mt-2 text-body-sm text-on-surface-variant">Requieren atención inmediata</div>
+</div>
+<div class="lg:col-span-4 bg-surface-container border border-outline-variant p-6 rounded-lg border-l-4 border-l-primary-container">
+<div class="flex justify-between items-start mb-4">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Eficiencia</span>
+<span class="material-symbols-outlined text-primary-container">speed</span>
+</div>
+<div class="font-h1 text-h1 text-on-surface">94.2%</div>
+<div class="mt-2 text-body-sm text-on-surface-variant">Tiempo promedio: 22 min</div>
+</div>
+</section>
+<!-- Order List Section -->
+<section class="space-y-4">
+<div class="flex items-center justify-between mb-6">
+<h2 class="font-h2 text-h2 text-on-surface">Pedidos Recientes</h2>
+<div class="flex gap-2">
+<button class="bg-secondary-container hover:bg-slate-700 text-on-surface px-4 py-2 rounded text-label-caps uppercase transition-colors">Filtrar</button>
+<button class="bg-primary-container hover:bg-sky-500 text-on-primary-container px-4 py-2 rounded text-label-caps uppercase transition-colors font-bold">Exportar</button>
+</div>
+</div>
+<!-- Order Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+<!-- Order Card 1 -->
+<div class="bg-surface-container border border-outline-variant rounded-lg overflow-hidden hover:border-outline transition-all flex flex-col h-full">
+<div class="p-6 border-b border-outline-variant bg-surface-container-high/50">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-h2 text-body-md font-bold text-primary">Panadería El Sol</h3>
+<span class="px-2 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded uppercase border border-primary/20">Pendiente</span>
+</div>
+<p class="text-body-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">location_on</span>
+                            Calle 45 #12-34, Bogota
+                        </p>
+</div>
+<div class="p-6 flex-grow">
+<div class="space-y-3">
+<div class="flex justify-between items-center">
+<span class="text-body-sm text-on-surface font-medium">10x Pan de Bono</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant">#9832</span>
+</div>
+<div class="text-[12px] text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">schedule</span>
+                                14:30 - 24 Oct 2023
+                            </div>
+</div>
+</div>
+<div class="p-4 bg-surface-container-low mt-auto">
+<button class="w-full bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 py-3 rounded text-label-caps uppercase transition-all active:scale-95">
+                            Cambiar Estado
+                        </button>
+</div>
+</div>
+<!-- Order Card 2 -->
+<div class="bg-surface-container border border-outline-variant rounded-lg overflow-hidden hover:border-outline transition-all flex flex-col h-full">
+<div class="p-6 border-b border-outline-variant bg-surface-container-high/50">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-h2 text-body-md font-bold text-primary">Café de la Montaña</h3>
+<span class="px-2 py-1 bg-green-500/10 text-green-400 text-[10px] font-bold rounded uppercase border border-green-500/20">Entregado</span>
+</div>
+<p class="text-body-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">location_on</span>
+                            Av. Principal #56-21
+                        </p>
+</div>
+<div class="p-6 flex-grow">
+<div class="space-y-3">
+<div class="flex justify-between items-center">
+<span class="text-body-sm text-on-surface font-medium">5x Café Espresso (Grano)</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant">#9831</span>
+</div>
+<div class="text-[12px] text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">schedule</span>
+                                13:15 - 24 Oct 2023
+                            </div>
+</div>
+</div>
+<div class="p-4 bg-surface-container-low mt-auto">
+<button class="w-full bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 py-3 rounded text-label-caps uppercase transition-all active:scale-95">
+                            Cambiar Estado
+                        </button>
+</div>
+</div>
+<!-- Order Card 3 -->
+<div class="bg-surface-container border border-outline-variant rounded-lg overflow-hidden hover:border-outline transition-all flex flex-col h-full">
+<div class="p-6 border-b border-outline-variant bg-surface-container-high/50">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-h2 text-body-md font-bold text-primary">Restaurante El Puerto</h3>
+<span class="px-2 py-1 bg-sky-400/10 text-sky-400 text-[10px] font-bold rounded uppercase border border-sky-400/20">Despachado</span>
+</div>
+<p class="text-body-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">location_on</span>
+                            Carrera 10 #100-50
+                        </p>
+</div>
+<div class="p-6 flex-grow">
+<div class="space-y-3">
+<div class="flex justify-between items-center">
+<span class="text-body-sm text-on-surface font-medium">20x Jugo de Naranja 500ml</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant">#9830</span>
+</div>
+<div class="text-[12px] text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">schedule</span>
+                                12:45 - 24 Oct 2023
+                            </div>
+</div>
+</div>
+<div class="p-4 bg-surface-container-low mt-auto">
+<button class="w-full bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 py-3 rounded text-label-caps uppercase transition-all active:scale-95">
+                            Cambiar Estado
+                        </button>
+</div>
+</div>
+<!-- Order Card 4 -->
+<div class="bg-surface-container border border-outline-variant rounded-lg overflow-hidden hover:border-outline transition-all flex flex-col h-full">
+<div class="p-6 border-b border-outline-variant bg-surface-container-high/50">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-h2 text-body-md font-bold text-primary">Supermercado Express</h3>
+<span class="px-2 py-1 bg-yellow-400/10 text-yellow-400 text-[10px] font-bold rounded uppercase border border-yellow-400/20">Pedido</span>
+</div>
+<p class="text-body-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">location_on</span>
+                            Calle 80 #15-90
+                        </p>
+</div>
+<div class="p-6 flex-grow">
+<div class="space-y-3">
+<div class="flex justify-between items-center">
+<span class="text-body-sm text-on-surface font-medium">50x Bolsas Biodegradables</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant">#9829</span>
+</div>
+<div class="text-[12px] text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">schedule</span>
+                                11:20 - 24 Oct 2023
+                            </div>
+</div>
+</div>
+<div class="p-4 bg-surface-container-low mt-auto">
+<button class="w-full bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 py-3 rounded text-label-caps uppercase transition-all active:scale-95">
+                            Cambiar Estado
+                        </button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-16 bg-slate-900/95 backdrop-blur-sm border-t border-slate-800">
+<a class="flex flex-col items-center justify-center text-slate-500 hover:text-sky-300 transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-['Manrope'] text-[10px] font-medium tracking-wide uppercase">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-sky-400 font-bold active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="font-['Manrope'] text-[10px] font-medium tracking-wide uppercase">Órdenes</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 hover:text-sky-300 transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">groups</span>
+<span class="font-['Manrope'] text-[10px] font-medium tracking-wide uppercase">Clientes</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 hover:text-sky-300 transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-['Manrope'] text-[10px] font-medium tracking-wide uppercase">Ajustes</span>
+</a>
+</nav>
+</body></html>
+
