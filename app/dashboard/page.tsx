@@ -109,7 +109,7 @@ export default function DashboardPage() {
 
   async function toggleAtendido(pedido: PedidoWithDetails) {
     // Cycle through estados: pendiente -> despachado -> entregado
-    const estadoFlow: Record<string, string> = {
+    const estadoFlow: Record<string, Pedido['estado']> = {
       pendiente: 'despachado',
       despachado: 'entregado',
       entregado: 'pendiente',
