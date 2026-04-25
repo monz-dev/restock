@@ -8,7 +8,7 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        'material-icons': ['Material Icons', 'sans-serif'],
+        'material-icons': ['Material Icons'],
         manrope: ['Manrope', 'sans-serif'],
         inter: ['Inter', 'sans-serif'],
         'label-caps': ['Inter', 'sans-serif'],
@@ -91,12 +91,6 @@ module.exports = {
         'surface-variant': '#2a3548',
       },
       // Typography
-      fontFamily: {
-        manrope: ['Manrope'],
-        inter: ['Inter', 'sans-serif'],
-        'label-caps': ['Inter', 'sans-serif'],
-        'data-mono': ['Inter', 'sans-serif'],
-      },
       fontSize: {
         h1: ['30px', { lineHeight: '38px', letterSpacing: '-0.02em', fontWeight: '700' }],
         h2: ['24px', { lineHeight: '32px', letterSpacing: '-0.01em', fontWeight: '600' }],

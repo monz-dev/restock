@@ -3,8 +3,15 @@ import type { Metadata, Viewport } from 'next';
 import { Inter, Manrope } from 'next/font/google';
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration';
 
-const inter = Inter({ subsets: ['latin'] });
-const manrope = Manrope({ subsets: ['latin'] });
+const inter = Inter({ 
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+});
+
+const manrope = Manrope({ 
+  subsets: ['latin'],
+  weight: ['400', '600', '700', '800'],
+});
 
 export const metadata: Metadata = {
   title: 'Sistema de Pedidos',
