@@ -420,7 +420,7 @@ export default function DashboardPage() {
                   >
                     <div className="p-6 border-b border-outline-variant bg-surface-container-high/50">
                       <div className="flex justify-between items-start mb-2">
-                        <h3 className={`font-h2 text-body-md font-bold truncate ${
+                        <h3 className={`font-semibold text-base truncate ${
                           darkMode ? 'text-primary' : 'text-blue-600'
                         }`}>
                           {pedido.cliente_nombre || 'Cliente'}
