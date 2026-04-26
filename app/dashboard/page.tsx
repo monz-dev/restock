@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase, Pedido, Cliente, Producto } from '@/lib/supabase/client';
+import { supabase, Pedido } from '@/lib/supabase/client';
 
 /**
  * Dashboard: Provider realtime dashboard
  * Styled with Slate Precision design system
+ * Uses unified palette - dark mode via CSS variables
  */
 
 interface PedidoWithDetails extends Pedido {
@@ -15,24 +16,18 @@ interface PedidoWithDetails extends Pedido {
   producto_nombre?: string;
 }
 
-// Hardcoded stats - will be calculated from DB after adding address field
-const STATS = {
-  totalHoy: 124,
-  pendientes: 18,
-  eficiencia: 94.2,
-  tiempoPromedio: '22 min'
-};
-
-const ESTADOS = ['pendiente', 'despachado', 'entregado', 'atendido'];
-
 export default function DashboardPage() {
   const [pedidos, setPedidos] = useState<PedidoWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
   const [latestPedido, setLatestPedido] = useState<PedidoWithDetails | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterEstado, setFilterEstado] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState(true);
+
+  // Sync dark mode class on mount
+  useEffect(() => {
+    document.documentElement.classList.add('dark');
+  }, []);
 
   useEffect(() => {
     async function fetchPedidos() {
@@ -111,7 +106,6 @@ export default function DashboardPage() {
   }, []);
 
   async function toggleAtendido(pedido: PedidoWithDetails) {
-    // Cycle through estados: pendiente -> despachado -> entregado
     const estadoFlow: Record<string, Pedido['estado']> = {
       pendiente: 'despachado',
       despachado: 'entregado',
@@ -120,7 +114,6 @@ export default function DashboardPage() {
     };
     const newEstado = estadoFlow[pedido.estado] || 'pendiente';
 
-    // Optimistic update
     setPedidos(prev =>
       prev.map(p => p.id === pedido.id ? { ...p, estado: newEstado } : p)
     );
@@ -131,7 +124,6 @@ export default function DashboardPage() {
       .eq('id', pedido.id);
 
     if (error) {
-      // Revert on error
       setPedidos(prev =>
         prev.map(p => p.id === pedido.id ? { ...p, estado: pedido.estado } : p)
       );
@@ -158,73 +150,42 @@ export default function DashboardPage() {
     return date.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
   }
 
-  // Filter pedidos
   const filteredPedidos = pedidos.filter(p => {
     const matchesSearch = !searchQuery || 
       p.cliente_nombre?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.producto_nombre?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = !filterEstado || p.estado === filterEstado;
-    return matchesSearch && matchesFilter;
+    return matchesSearch;
   });
 
   function toggleDarkMode() {
     setDarkMode(!darkMode);
-  }
-
-  const pendientesCount = pedidos.filter(p => p.estado === 'pendiente').length;
-
-  function getEstadoChip(estado: string, isDark: boolean) {
-    const styles: Record<string, string> = {
-      pendiente: isDark ? 'chip-pendiente' : 'bg-yellow-100 text-yellow-700 border border-yellow-200',
-      despachado: isDark ? 'chip-despachado' : 'bg-indigo-100 text-indigo-700 border border-indigo-200',
-      entregado: isDark ? 'chip-entregado' : 'bg-green-100 text-green-700 border border-green-200',
-      atendido: isDark ? 'chip-entregado' : 'bg-green-100 text-green-700 border border-green-200'
-    };
-    const labels: Record<string, string> = {
-      pendiente: 'Pendiente',
-      despachado: 'Despachado',
-      entregado: 'Entregado',
-      atendido: 'Entregado'
-    };
-    return { className: styles[estado] || styles.pendiente, label: labels[estado] || 'Pendiente' };
+    if (!darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   }
 
   if (loading) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${
-        darkMode ? 'bg-surface grid-dot' : 'bg-gray-50'
-      }`}>
+      <div className="min-h-screen flex items-center justify-center bg-surface grid-dot">
         <div className="flex flex-col items-center gap-3">
-          <div className={`w-8 h-8 border-4 rounded-full animate-spin ${
-            darkMode 
-              ? 'border-surface-container-high border-t-primary-container' 
-              : 'border-gray-300 border-t-gray-600'
-          }`} />
-          <p className={`text-sm ${darkMode ? 'text-on-surface-variant' : 'text-gray-500'}`}>
-            Cargando...
-          </p>
+          <div className="w-8 h-8 border-4 border-surface-high border-t-primary-container rounded-full animate-spin" />
+          <p className="text-sm text-on-surface-variant">Cargando...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-surface grid-dot' : 'bg-gray-50'}`}>
+    <div className="min-h-screen bg-surface grid-dot">
       {/* TopAppBar */}
-      <header className={`fixed top-0 left-0 z-50 flex justify-between items-center w-full px-6 h-16 ${
-        darkMode 
-          ? 'bg-slate-900 border-b border-slate-800' 
-          : 'bg-white border-b border-gray-200'
-      }`}>
+      <header className="fixed top-0 left-0 z-50 flex justify-between items-center w-full px-6 h-16 bg-surface-bright border-b border-outline-variant">
         <div className="flex items-center gap-4">
-          <button className={`p-2 rounded transition-colors ${
-            darkMode ? 'text-sky-400 hover:bg-slate-800' : 'text-gray-700 hover:bg-gray-100'
-          }`} aria-label="Menú">
+          <button className="p-2 rounded transition-colors text-primary hover:bg-surface-high" aria-label="Menú">
             <span className="material-symbols-outlined">menu</span>
           </button>
-          <h1 className={`font-manrope text-sm font-semibold tracking-tight uppercase ${
-            darkMode ? 'text-sky-400' : 'text-gray-900'
-          }`}>
+          <h1 className="font-manrope text-sm font-semibold tracking-tight uppercase text-primary">
             Pedidos de Clientes
           </h1>
         </div>
@@ -232,11 +193,7 @@ export default function DashboardPage() {
           <button 
             onClick={toggleDarkMode}
             aria-label="Cambiar tema" 
-            className={`p-2 rounded transition-colors ${
-              darkMode 
-                ? 'text-sky-400 hover:bg-slate-800' 
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
+            className="p-2 rounded transition-colors text-primary hover:bg-surface-high"
           >
             <span className="material-symbols-outlined">
               {darkMode ? 'light_mode' : 'dark_mode'}
@@ -250,24 +207,14 @@ export default function DashboardPage() {
         {/* New pedido toast */}
         {latestPedido && latestPedido.estado === 'pendiente' && (
           <div className="fixed top-20 left-4 right-4 z-20 animate-in slide-in-from-top-4 duration-300">
-            <div className={`max-w-md mx-auto border rounded-xl p-4 shadow-xl ${
-              darkMode 
-                ? 'bg-surface-container border-primary-container' 
-                : 'bg-white border-gray-300'
-            }`}>
+            <div className="max-w-md mx-auto border border-primary-container rounded-xl p-4 shadow-xl bg-surface-container">
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                  darkMode ? 'bg-primary-container/20' : 'bg-blue-100'
-                }`}>
-                  <span className={`material-icons ${
-                    darkMode ? 'text-primary' : 'text-blue-600'
-                  }`}>
-                    notifications
-                  </span>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary-container/20">
+                  <span className="material-icons text-primary">notifications</span>
                 </div>
                 <div>
-                  <p className={`font-semibold ${darkMode ? 'text-on-surface' : 'text-gray-900'}`}>Nuevo pedido</p>
-                  <p className={`text-sm ${darkMode ? 'text-on-surface-variant' : 'text-gray-500'}`}>
+                  <p className="font-semibold text-on-surface">Nuevo pedido</p>
+                  <p className="text-sm text-on-surface-variant">
                     {latestPedido.producto_nombre} — {latestPedido.cliente_nombre}
                   </p>
                 </div>
@@ -276,28 +223,15 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Search and Overview Section */}
+        {/* Search Section */}
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-gutter mb-section-gap">
-          {/* Search Bar */}
           <div className="lg:col-span-12">
-            <div className={`relative border p-1 group focus-within:border-primary-container transition-colors rounded ${
-              darkMode 
-                ? 'bg-surface-container border-outline-variant' 
-                : 'bg-white border-gray-300'
-            }`}>
+            <div className="relative border border-outline-variant bg-surface-container p-1 group focus-within:border-primary-container transition-colors rounded">
               <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                <span className={`material-icons ${
-                  darkMode ? 'text-outline group-focus-within:text-primary-container' : 'text-gray-400 group-focus-within:text-blue-600'
-                }`}>
-                  search
-                </span>
+                <span className="material-icons text-outline group-focus-within:text-primary-container">search</span>
               </div>
               <input 
-                className={`w-full bg-transparent border-none focus:ring-0 pl-12 pr-4 py-3 font-body-md rounded ${
-                  darkMode 
-                    ? 'text-on-surface placeholder:text-outline-variant' 
-                    : 'text-gray-900 placeholder:text-gray-400'
-                }`}
+                className="w-full bg-transparent border-none focus:ring-0 pl-12 pr-4 py-3 text-on-surface placeholder:text-outline-variant rounded"
                 placeholder="Buscar por cliente o producto..." 
                 type="text"
                 value={searchQuery}
@@ -305,226 +239,109 @@ export default function DashboardPage() {
               />
             </div>
           </div>
-
-          {/* 
-          // TODO: Uncomment after adding DB fields for stats calculation
-          // Stats require: direccion field in clientes, tiempo_promedio/eficiencia metrics
-          
-          <div className="lg:col-span-4 bg-surface-container border border-outline-variant p-6 rounded-lg">
-            <div className="flex justify-between items-start mb-4">
-              <span className="font-label-caps text-label-caps text-on-surface-variant uppercase">Total Hoy</span>
-              <span className="material-icons text-primary">calendar_today</span>
-            </div>
-            <div className="font-h1 text-h1 text-on-surface">{STATS.totalHoy}</div>
-            <div className="mt-2 text-body-sm text-primary flex items-center gap-1">
-              <span className="material-icons text-sm">trending_up</span>
-              <span>+12% vs ayer</span>
-            </div>
-          </div>
-
-          <div className="lg:col-span-4 bg-surface-container border border-outline-variant p-6 rounded-lg">
-            <div className="flex justify-between items-start mb-4">
-              <span className="font-label-caps text-label-caps text-on-surface-variant uppercase">Pendientes</span>
-              <span className="material-icons text-error">pending_actions</span>
-            </div>
-            <div className="font-h1 text-h1 text-on-surface">{pendientesCount}</div>
-            <div className="mt-2 text-body-sm text-on-surface-variant">Requieren atención</div>
-          </div>
-
-          <div className="lg:col-span-4 bg-surface-container border border-outline-variant p-6 rounded-lg border-l-4 border-l-primary-container">
-            <div className="flex justify-between items-start mb-4">
-              <span className="font-label-caps text-label-caps text-on-surface-variant uppercase">Eficiencia</span>
-              <span className="material-icons text-primary-container">speed</span>
-            </div>
-            <div className="font-h1 text-h1 text-on-surface">{STATS.eficiencia}%</div>
-            <div className="mt-2 text-body-sm text-on-surface-variant">Tiempo promedio: {STATS.tiempoPromedio}</div>
-          </div>
-          */}
         </section>
 
         {/* Order List Section */}
         <section className="space-y-4">
           <div className="flex items-center justify-between mb-6">
-            <h2 className={`font-h2 text-h2 ${darkMode ? 'text-on-surface' : 'text-gray-900'}`}>Pedidos Recientes</h2>
-            <div className="flex gap-2">
-              {/* 
-              // TODO: Uncomment after implementing filter functionality
-              <button 
-                onClick={() => setFilterEstado(filterEstado ? null : 'pendiente')}
-                className={`px-4 py-2 rounded text-label-caps uppercase transition-colors ${
-                  filterEstado === 'pendiente' 
-                    ? 'bg-primary-container text-on-primary-container' 
-                    : darkMode
-                      ? 'bg-secondary-container text-on-secondary-container hover:bg-surface-high'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                Filtrar
-              </button>
-              
-              // TODO: Uncomment after implementing export functionality
-              <button className={`px-4 py-2 rounded text-label-caps uppercase transition-colors ${
-                darkMode
-                  ? 'bg-primary-container hover:bg-primary text-on-primary-container'
-                  : 'bg-gray-900 hover:bg-gray-800 text-white'
-              }`}>
-                Exportar
-              </button>
-              */}
-            </div>
+            <h2 className="font-h2 text-h2 text-on-surface">Pedidos Recientes</h2>
           </div>
 
           {/* Connection Status */}
           <div className="flex items-center gap-2 mb-4">
             <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-amber-500'}`} />
-            <span className={`text-xs ${darkMode ? 'text-on-surface-variant' : 'text-gray-500'}`}>
-              {isConnected ? ' Conectado en tiempo real' : ' Conectando...'}
+            <span className="text-xs text-on-surface-variant">
+              {isConnected ? 'Conectado en tiempo real' : 'Conectando...'}
             </span>
           </div>
 
           {/* Order Cards */}
           {filteredPedidos.length === 0 ? (
-            <div className={`border rounded-lg p-12 text-center ${
-              darkMode 
-                ? 'bg-surface-container border-outline-variant' 
-                : 'bg-white border-gray-200'
-            }`}>
-              <span className={`material-icons text-6xl mb-4 ${
-                darkMode ? 'text-outline' : 'text-gray-300'
-              }`}>
-                inbox
-              </span>
-              <h3 className={`font-h2 text-h2 mb-2 ${
-                darkMode ? 'text-on-surface' : 'text-gray-900'
-              }`}>
-                Sin pedidos
-              </h3>
-              <p className={`text-body-sm ${
-                darkMode ? 'text-on-surface-variant' : 'text-gray-500'
-              }`}>
+            <div className="border border-outline-variant bg-surface-container rounded-lg p-12 text-center">
+              <span className="material-icons text-6xl text-outline mb-4">inbox</span>
+              <h3 className="font-h2 text-h2 mb-2 text-on-surface">Sin pedidos</h3>
+              <p className="text-body-sm text-on-surface-variant">
                 Los nuevos pedidos aparecerán aquí
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredPedidos.map(pedido => {
-                const chip = getEstadoChip(pedido.estado, darkMode);
-                return (
-                  <div 
-                    key={pedido.id} 
-                    className={`border rounded-lg overflow-hidden hover:border transition-all flex flex-col h-full ${
-                      darkMode 
-                        ? 'bg-surface-container border-outline-variant' 
-                        : 'bg-white border-gray-200'
-                    }`}
-                  >
-                    <div className="p-6 border-b border-outline-variant bg-surface-container-high/50">
-                      <div className="flex justify-between items-start mb-2">
-                        <h3 className={`font-semibold text-base truncate ${
-                          darkMode ? 'text-primary' : 'text-blue-600'
-                        }`}>
-                          {pedido.cliente_nombre || 'Cliente'}
-                        </h3>
-                        <span className={`px-2 py-1 text-[10px] font-bold rounded uppercase border ${
-                          pedido.estado === 'pendiente' ? 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20' :
-                          pedido.estado === 'despachado' ? 'bg-sky-400/10 text-sky-400 border-sky-400/20' :
-                          pedido.estado === 'entregado' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-                          'bg-green-500/10 text-green-400 border-green-500/20'
-                        }`}>
-                          {pedido.estado}
+              {filteredPedidos.map(pedido => (
+                <div 
+                  key={pedido.id} 
+                  className="border border-outline-variant bg-surface-container rounded-lg overflow-hidden hover:border-outline transition-all flex flex-col h-full"
+                >
+                  <div className="p-6 border-b border-outline-variant bg-surface-high/50">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-semibold text-base truncate text-primary">
+                        {pedido.cliente_nombre || 'Cliente'}
+                      </h3>
+                      <span className={`px-2 py-1 text-[10px] font-bold rounded uppercase border ${
+pedido.estado === 'pendiente' ? 'bg-status-pendiente-bg text-status-pendiente border-status-pendiente' :
+                          pedido.estado === 'despachado' ? 'bg-status-despachado-bg text-status-despachado border-status-despachado' :
+                          'bg-status-entregado-bg text-status-entregado border-status-entregado'
+                      }`}>
+                        {pedido.estado}
+                      </span>
+                    </div>
+                    <a 
+                      href={pedido.cliente_url_maps || '#'} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className={`text-body-sm text-on-surface-variant flex items-center gap-1 hover:opacity-80 hover:scale-105 transition-all duration-200 ${!pedido.cliente_url_maps ? 'pointer-events-none' : ''}`}
+                    >
+                      <span className="material-symbols-outlined text-sm">location_on</span>
+                      {pedido.cliente_direccion || 'Sin dirección'}
+                    </a>
+                  </div>
+                  <div className="p-6 flex-grow">
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-body-sm text-on-surface font-medium">
+                          {pedido.cantidad}x {pedido.producto_nombre || 'Producto'}
+                        </span>
+                        <span className="font-data-mono text-data-mono text-on-surface-variant">
+                          #{pedido.id.slice(0, 4)}
                         </span>
                       </div>
-                      <a 
-                          href={pedido.cliente_url_maps || '#'} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className={`text-body-sm flex items-center gap-1 hover:underline ${
-                            darkMode ? 'text-on-surface-variant' : 'text-gray-500'
-                          } ${!pedido.cliente_url_maps ? 'pointer-events-none' : ''}`}
-                        >
-                          <span className="material-symbols-outlined text-sm">location_on</span>
-                          {pedido.cliente_direccion || 'Sin dirección'}
-                        </a>
-                    </div>
-                    <div className="p-6 flex-grow">
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <span className={`text-body-sm text-on-surface font-medium ${
-                            darkMode ? 'text-on-surface' : 'text-gray-900'
-                          }`}>
-                            {pedido.cantidad}x {pedido.producto_nombre || 'Producto'}
-                          </span>
-                          <span className={`font-data-mono text-data-mono text-on-surface-variant ${
-                            darkMode ? 'text-on-surface-variant' : 'text-gray-500'
-                          }`}>
-                            #{pedido.id.slice(0, 4)}
-                          </span>
-                        </div>
-                        <div className={`text-[12px] text-on-surface-variant flex items-center gap-2 ${
-                          darkMode ? 'text-on-surface-variant' : 'text-gray-400'
-                        }`}>
-                          <span className="material-symbols-outlined text-sm">schedule</span>
-                          {formatTime(pedido.created_at)} - {formatDate(pedido.created_at)}
-                        </div>
+                      <div className="text-[12px] text-on-surface-variant flex items-center gap-2">
+                        <span className="material-symbols-outlined text-sm">schedule</span>
+                        {formatTime(pedido.created_at)} - {formatDate(pedido.created_at)}
                       </div>
                     </div>
-                    <div className="p-4 bg-surface-container-low mt-auto">
-                      <button 
-                        onClick={() => toggleAtendido(pedido)}
-                        className={`w-full bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 py-3 rounded text-label-caps uppercase transition-all active:scale-95 ${
-                          darkMode 
-                            ? '' 
-                            : ''
-                        }`}
-                      >
-                        Cambiar Estado
-                      </button>
-                    </div>
                   </div>
-                );
-              })}
+                  <div className="p-4 bg-surface-low mt-auto">
+                    <button 
+                      onClick={() => toggleAtendido(pedido)}
+                      className="w-full bg-surface-high hover:bg-surface-highest text-primary border border-outline-variant py-3 rounded text-label-caps uppercase transition-all active:scale-95"
+                    >
+                      Cambiar Estado
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </section>
       </main>
 
       {/* BottomNavBar */}
-      <nav className={`fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-16 ${
-        darkMode 
-          ? 'bg-slate-900/95 backdrop-blur-sm border-t border-slate-800'
-          : 'bg-white/95 backdrop-blur-sm border-gray-200'
-      }`}>
-        <a className={`flex flex-col items-center justify-center transition-all active:scale-90 duration-150 ${
-          darkMode ? 'text-slate-500 hover:text-sky-300' : 'text-gray-500 hover:text-gray-700'
-        }`} href="/">
+      <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-16 bg-surface-bright/95 backdrop-blur-sm border-t border-outline-variant">
+        <a className="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-150" href="/">
           <span className="material-symbols-outlined">dashboard</span>
-          <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">
-            Dashboard
-          </span>
+          <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">Dashboard</span>
         </a>
-        <a className={`flex flex-col items-center justify-center text-sky-400 font-bold active:scale-90 duration-150 ${
-          darkMode ? '' : ''
-        }`} href="/dashboard">
+        <a className="flex flex-col items-center justify-center text-primary font-bold active:scale-90 duration-150" href="/dashboard">
           <span className="material-symbols-outlined">shopping_cart</span>
-          <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">
-            Órdenes
-          </span>
+          <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">Órdenes</span>
         </a>
-        <a className={`flex flex-col items-center justify-center transition-all active:scale-90 duration-150 ${
-          darkMode ? 'text-slate-500 hover:text-sky-300' : 'text-gray-500 hover:text-gray-700'
-        }`} href="/clientes">
+        <a className="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-150" href="/clientes">
           <span className="material-symbols-outlined">groups</span>
-          <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">
-            Clientes
-          </span>
+          <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">Clientes</span>
         </a>
-        <a className={`flex flex-col items-center justify-center transition-all active:scale-90 duration-150 ${
-          darkMode ? 'text-slate-500 hover:text-sky-300' : 'text-gray-500 hover:text-gray-700'
-        }`} href="#">
+        <a className="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-150" href="#">
           <span className="material-symbols-outlined">settings</span>
-          <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">
-            Ajustes
-          </span>
+          <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">Ajustes</span>
         </a>
       </nav>
     </div>
