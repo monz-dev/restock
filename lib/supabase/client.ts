@@ -18,12 +18,21 @@ export interface Cliente {
   created_at: string;
 }
 
+export interface Proveedor {
+  id: string;
+  nombre: string;
+  slug: string;
+  activo: boolean;
+  created_at: string;
+}
+
 export interface Producto {
   id: string;
   nombre: string;
   precio: number;
   unidad_medida: string;
   activo: boolean;
+  proveedor_id: string;
   created_at: string;
 }
 

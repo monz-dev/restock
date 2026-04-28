@@ -1,20 +1,29 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase, Cliente, Producto } from '@/lib/supabase/client';
+import { supabase, Cliente, Proveedor, Producto } from '@/lib/supabase/client';
 
 /**
- * ClientePage: One-click ordering
+ * ClientePage: Supplier-first ordering flow
  * Styled with Slate Precision design system
- * Uses unified palette - dark mode via CSS variables
+ * Flow: Cliente → Proveedores → Expand → Productos → Select → Order
  */
+
+interface ProductoConCantidad extends Producto {
+  cantidadSeleccionada: number;
+}
+
+interface ProveedorConProductos extends Proveedor {
+  productos: ProductoConCantidad[];
+  expanded: boolean;
+}
 
 export default function ClientePage({ params }: { params: { slug: string } }) {
   const [cliente, setCliente] = useState<Cliente | null>(null);
-  const [productos, setProductos] = useState<Producto[]>([]);
+  const [proveedores, setProveedores] = useState<ProveedorConProductos[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [ordering, setOrdering] = useState<string | null>(null);
+  const [ordering, setOrdering] = useState(false);
   const [success, setSuccess] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
 
@@ -25,6 +34,7 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
 
   useEffect(() => {
     async function fetchData() {
+      // Fetch cliente
       const { data: clienteData, error: clienteError } = await supabase
         .from('clientes')
         .select('*')
@@ -40,31 +50,103 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
 
       setCliente(clienteData);
 
-      const { data: productosData } = await supabase
-        .from('productos')
+      // Fetch active proveedores
+      const { data: proveedoresData } = await supabase
+        .from('proveedores')
         .select('*')
         .eq('activo', true)
         .order('nombre');
 
-      if (productosData) {
-        setProductos(productosData);
+      // Fetch products with proveedor info
+      const { data: productosData } = await supabase
+        .from('productos')
+        .select('*, proveedores(id, nombre)')
+        .eq('activo', true);
+
+      if (proveedoresData && productosData) {
+        // Group products by proveedor
+        const proveedoresConProductos: ProveedorConProductos[] = proveedoresData.map(prov => ({
+          ...prov,
+          productos: productosData
+            .filter(p => p.proveedor_id === prov.id)
+            .map(p => ({ ...p, cantidadSeleccionada: 0 })),
+          expanded: false
+        }));
+        setProveedores(proveedoresConProductos);
       }
+
       setLoading(false);
     }
 
     fetchData();
   }, [params.slug]);
 
-  async function handleMakeOrder(producto: Producto) {
+  function toggleExpand(proveedorId: string) {
+    setProveedores(prev =>
+      prev.map(p =>
+        p.id === proveedorId ? { ...p, expanded: !p.expanded } : p
+      )
+    );
+  }
+
+  function updateCantidad(proveedorId: string, productoId: string, cantidad: number) {
+    setProveedores(prev =>
+      prev.map(p =>
+        p.id === proveedorId
+          ? {
+              ...p,
+              productos: p.productos.map(prod =>
+                prod.id === productoId
+                  ? { ...prod, cantidadSeleccionada: Math.max(0, cantidad) }
+                  : prod
+              )
+            }
+          : p
+      )
+    );
+  }
+
+  function getSelectedItems() {
+    const items: { producto: Producto; cantidad: number }[] = [];
+    proveedores.forEach(p => {
+      p.productos.forEach(prod => {
+        if (prod.cantidadSeleccionada > 0) {
+          items.push({ producto: prod, cantidad: prod.cantidadSeleccionada });
+        }
+      });
+    });
+    return items;
+  }
+
+  async function handleMakeOrder(proveedorId: string) {
     if (!cliente) return;
 
-    setOrdering(producto.id);
+    const proveedor = proveedores.find(p => p.id === proveedorId);
+    if (!proveedor) return;
+
+    const selectedItems = proveedor.productos.filter(p => p.cantidadSeleccionada > 0);
+    if (selectedItems.length === 0) {
+      alert('Seleccioná al menos un producto con cantidad mayor a 0');
+      return;
+    }
+
+    setOrdering(true);
 
     try {
+      // Create one pedido per selected product
+      const pedidos = selectedItems.map(item => ({
+        cliente_id: cliente.id,
+        producto_id: item.id,
+        cantidad: item.cantidadSeleccionada,
+        estado: 'pendiente'
+      }));
+
       const response = await fetch(`/api/pedido?cliente_slug=${params.slug}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ producto_id: producto.id })
+        body: JSON.stringify({ 
+          pedidos: pedidos 
+        })
       });
 
       const result = await response.json();
@@ -74,6 +156,19 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
       }
 
       setSuccess(true);
+      
+      // Reset quantities
+      setProveedores(prev =>
+        prev.map(p =>
+          p.id === proveedorId
+            ? {
+                ...p,
+                productos: p.productos.map(prod => ({ ...prod, cantidadSeleccionada: 0 })),
+                expanded: false
+              }
+            : p
+        )
+      );
 
       setTimeout(() => {
         setSuccess(false);
@@ -82,7 +177,7 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
     } catch {
       alert('No se pudo enviar. Intentá de nuevo.');
     } finally {
-      setOrdering(null);
+      setOrdering(false);
     }
   }
 
@@ -118,6 +213,8 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
     );
   }
 
+  const selectedCount = getSelectedItems().length;
+
   return (
     <div className="min-h-screen flex flex-col bg-surface grid-dot">
       {/* TopAppBar */}
@@ -139,8 +236,8 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center p-6 pt-24">
-        <div className="w-full max-w-md">
+      <main className="flex-1 flex items-start justify-center p-6 pt-24">
+        <div className="w-full max-w-md space-y-4">
           {/* Success Overlay */}
           {success && (
             <div className="fixed inset-0 bg-surface/80 flex items-center justify-center z-50 animate-in fade-in duration-200">
@@ -152,66 +249,110 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
             </div>
           )}
 
-          {/* Products Grid */}
-          {productos.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {productos.map(producto => (
-                <div 
-                  key={producto.id}
-                  className="bg-surface-container border border-outline-variant rounded-lg overflow-hidden hover:border-outline transition-all"
-                >
-                  {/* Product Image / Icon */}
-                  <div className="h-24 flex items-center justify-center bg-surface-high/50">
-                    <span className="material-symbols-outlined text-4xl text-on-surface-variant select-none">
-                      inventory_2
-                    </span>
-                  </div>
-
-                  {/* Product Info */}
-                  <div className="p-3">
-                    <div className="text-center mb-3">
-                      <h2 className="text-base font-bold mb-1 text-on-surface">
-                        {producto.nombre}
-                      </h2>
-                      <p className="text-lg font-bold text-primary">
-                        ${producto.precio}
-                        <span className="text-xs font-normal ml-1 text-on-surface-variant">
-                          / {producto.unidad_medida}
-                        </span>
+          {/* Proveedores List */}
+          <h2 className="text-lg font-semibold text-on-surface mb-2">Proveedores</h2>
+          
+          {proveedores.length > 0 ? (
+            proveedores.map(proveedor => (
+              <div 
+                key={proveedor.id}
+                className="bg-surface-container border border-outline-variant rounded-lg overflow-hidden"
+              >
+                {/* Proveedor Header */}
+                <div className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-3xl text-primary">store</span>
+                    <div>
+                      <h3 className="font-bold text-on-surface">{proveedor.nombre}</h3>
+                      <p className="text-xs text-on-surface-variant">
+                        {proveedor.productos.length} productos disponibles
                       </p>
                     </div>
-
-                    {/* CTA Button */}
-                    <button
-                      onClick={() => handleMakeOrder(producto)}
-                      disabled={ordering === producto.id}
-                      className={`
-                        w-full py-2 rounded text-sm font-semibold
-                        transition-all duration-200 active:scale-95
-                        ${ordering === producto.id
-                          ? 'bg-surface-high text-on-surface-variant cursor-not-allowed'
-                          : 'bg-surface-high hover:bg-surface-highest text-primary border border-outline-variant'
-                        }
-                      `}
-                    >
-                      {ordering === producto.id ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
-                          Enviando...
-                        </span>
-                      ) : (
-                        'Hacer Pedido'
-                      )}
-                    </button>
                   </div>
+                  <button
+                    onClick={() => toggleExpand(proveedor.id)}
+                    className="p-2 rounded text-primary hover:bg-surface-high transition-colors"
+                  >
+                    <span className="material-symbols-outlined">
+                      {proveedor.expanded ? 'expand_less' : 'expand_more'}
+                    </span>
+                  </button>
                 </div>
-              ))}
-            </div>
+
+                {/* Expanded Product List */}
+                {proveedor.expanded && (
+                  <div className="border-t border-outline-variant">
+                    {proveedor.productos.length > 0 ? (
+                      <div className="divide-y divide-outline-variant">
+                        {proveedor.productos.map(producto => (
+                          <div key={producto.id} className="p-3 flex items-center justify-between gap-3">
+                            <div className="flex-1">
+                              <p className="font-medium text-on-surface text-sm">{producto.nombre}</p>
+                              <p className="text-xs text-on-surface-variant">
+                                ${producto.precio} / {producto.unidad_medida}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => updateCantidad(proveedor.id, producto.id, producto.cantidadSeleccionada - 1)}
+                                className="w-8 h-8 rounded bg-surface-high text-on-surface flex items-center justify-center hover:bg-surface-highest transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-sm">remove</span>
+                              </button>
+                              <span className="w-8 text-center font-semibold text-on-surface">
+                                {producto.cantidadSeleccionada}
+                              </span>
+                              <button
+                                onClick={() => updateCantidad(proveedor.id, producto.id, producto.cantidadSeleccionada + 1)}
+                                className="w-8 h-8 rounded bg-surface-high text-on-surface flex items-center justify-center hover:bg-surface-highest transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-sm">add</span>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-4 text-center text-on-surface-variant text-sm">
+                        Este proveedor no tiene productos disponibles
+                      </div>
+                    )}
+
+                    {/* Order Button for this Proveedor */}
+                    {proveedor.productos.some(p => p.cantidadSeleccionada > 0) && (
+                      <div className="p-3 border-t border-outline-variant">
+                        <button
+                          onClick={() => handleMakeOrder(proveedor.id)}
+                          disabled={ordering}
+                          className={`
+                            w-full py-2.5 rounded text-sm font-semibold
+                            transition-all duration-200 active:scale-95
+                            ${ordering
+                              ? 'bg-surface-high text-on-surface-variant cursor-not-allowed'
+                              : 'bg-primary text-on-primary hover:bg-primary/90'
+                            }
+                          `}
+                        >
+                          {ordering ? (
+                            <span className="flex items-center justify-center gap-2">
+                              <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                              Enviando...
+                            </span>
+                          ) : (
+                            `Hacer Pedido (${proveedor.productos.filter(p => p.cantidadSeleccionada > 0).length} items)`
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))
           ) : (
             <div className="text-center py-8">
-              <span className="material-symbols-outlined text-5xl text-outline mb-2">inventory_2</span>
+              <span className="material-symbols-outlined text-5xl text-outline mb-2">store</span>
               <p className="text-on-surface-variant">
-                Sin productos disponibles
+                Sin proveedores disponibles
               </p>
             </div>
           )}

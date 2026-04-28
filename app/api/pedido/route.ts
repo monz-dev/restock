@@ -3,9 +3,19 @@ import { createClient } from '@supabase/supabase-js';
 
 /**
  * POST /api/pedido
- * Creates a new pedido (order) from a client page
+ * Creates one or multiple pedidos (orders) from a client page
  * 
- * Body: { producto_id: string }
+ * Body (new - multiple items):
+ * { 
+ *   pedidos: [
+ *     { producto_id: string, cantidad: number },
+ *     ...
+ *   ]
+ * }
+ * 
+ * Body (legacy - single item):
+ * { producto_id: string }
+ * 
  * Path parameter extracted from URL: /api/pedido?cliente_slug=xxx
  */
 
@@ -27,22 +37,45 @@ export async function POST(request: NextRequest) {
 
     // Parse body
     const body = await request.json();
-    const { producto_id } = body;
-
-    if (!producto_id) {
+    
+    // Support both single producto_id and multiple pedidos array
+    let pedidosInput: { producto_id: string; cantidad: number }[] = [];
+    
+    if (body.pedidos && Array.isArray(body.pedidos)) {
+      // New format: multiple pedidos
+      pedidosInput = body.pedidos;
+    } else if (body.producto_id) {
+      // Legacy format: single producto_id
+      pedidosInput = [{ producto_id: body.producto_id, cantidad: 1 }];
+    } else {
       return NextResponse.json(
-        { success: false, error: 'Falta producto_id' },
+        { success: false, error: 'Falta producto_id o pedidos' },
+        { status: 400 }
+      );
+    }
+
+    if (pedidosInput.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'No hay productos para pedir' },
         { status: 400 }
       );
     }
 
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(producto_id)) {
-      return NextResponse.json(
-        { success: false, error: 'producto_id formato inválido' },
-        { status: 400 }
-      );
+    for (const p of pedidosInput) {
+      if (!uuidRegex.test(p.producto_id)) {
+        return NextResponse.json(
+          { success: false, error: `producto_id formato inválido: ${p.producto_id}` },
+          { status: 400 }
+        );
+      }
+      if (!Number.isInteger(p.cantidad) || p.cantidad < 1) {
+        return NextResponse.json(
+          { success: false, error: `cantidad inválida para producto ${p.producto_id}` },
+          { status: 400 }
+        );
+      }
     }
 
     // Create Supabase client (server-side)
@@ -63,45 +96,47 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate producto exists
-    const { data: producto, error: productoError } = await supabase
+    // Get all valid producto IDs in one query
+    const productoIds = pedidosInput.map(p => p.producto_id);
+    const { data: productos, error: productosError } = await supabase
       .from('productos')
       .select('id, nombre')
-      .eq('id', producto_id)
-      .eq('activo', true)
-      .single();
+      .in('id', productoIds)
+      .eq('activo', true);
 
-    if (productoError || !producto) {
+    if (productosError || !productos || productos.length !== productoIds.length) {
       return NextResponse.json(
-        { success: false, error: 'Producto no encontrado' },
+        { success: false, error: 'Uno o más productos no encontrados' },
         { status: 404 }
       );
     }
 
-    // Insert pedido
-    const { data: pedido, error: pedidoError } = await supabase
-      .from('pedidos')
-      .insert({
-        cliente_id: cliente.id,
-        producto_id: producto_id,
-        cantidad: 1,
-        estado: 'pendiente'
-      })
-      .select()
-      .single();
+    // Prepare pedidos for insertion
+    const pedidosToInsert = pedidosInput.map(p => ({
+      cliente_id: cliente.id,
+      producto_id: p.producto_id,
+      cantidad: p.cantidad,
+      estado: 'pendiente'
+    }));
 
-    if (pedidoError) {
-      console.error('Error inserting pedido:', pedidoError);
+    // Insert all pedidos
+    const { data: pedidos, error: pedidosError } = await supabase
+      .from('pedidos')
+      .insert(pedidosToInsert)
+      .select();
+
+    if (pedidosError) {
+      console.error('Error inserting pedidos:', pedidosError);
       return NextResponse.json(
-        { success: false, error: 'Error al crear pedido' },
+        { success: false, error: 'Error al crear pedidos' },
         { status: 500 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      pedido_id: pedido.id,
-      message: 'Pedido enviado'
+      pedidos_ids: pedidos.map(p => p.id),
+      message: `${pedidos.length} pedido(s) enviado(s)`
     }, { status: 201 });
 
   } catch (error) {
