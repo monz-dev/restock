@@ -85,7 +85,7 @@ Share the URL: `https://yoursite.com/mi-comercio`
 - Next.js 14 (App Router)
 - Supabase (PostgreSQL + Realtime)
 - Tailwind CSS
-- TypeScript
+- TypeScript.
 
 ## License
 
