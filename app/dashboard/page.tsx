@@ -157,16 +157,16 @@ export default function DashboardPage() {
   function groupPedidosByOrden(pedidos: PedidoItem[]): OrdenGroup[] {
     const groups = new Map<string, PedidoItem[]>();
 
-    for (const p of pedidos) {
-      const key = p.orden_id || p.id; // fallback for legacy items without orden_id
+    pedidos.forEach(p => {
+      const key = p.orden_id || p.id;
       if (!groups.has(key)) {
         groups.set(key, []);
       }
       groups.get(key)!.push(p);
-    }
+    });
 
     const result: OrdenGroup[] = [];
-    for (const [ordenId, items] of groups.entries()) {
+    Array.from(groups.entries()).forEach(([ordenId, items]) => {
       const first = items[0];
       result.push({
         orden_id: ordenId,
@@ -179,7 +179,7 @@ export default function DashboardPage() {
           new Date(item.created_at) < new Date(earliest) ? item.created_at : earliest
         , items[0].created_at)
       });
-    }
+    });
 
     // Sort by most recent first
     result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
