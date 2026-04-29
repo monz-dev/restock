@@ -83,7 +83,9 @@ export async function getUserRoles(): Promise<Rol[]> {
     .select('rol_id, roles(id, nombre, descripcion, created_at)')
     .eq('user_id', session.user.id);
 
-  return data?.map(d => d.roles).filter(Boolean) || [];
+  // Extraer la relación roles de cada row
+  const roles = data?.map((d: unknown) => (d as { roles: Rol }).roles).filter(Boolean) || [];
+  return roles;
 }
 
 /**
@@ -101,8 +103,9 @@ export async function getUserPermisos(): Promise<string[]> {
     .select('permisos(nombre)')
     .in('rol_id', roles.map(r => r.id));
 
-  const permisosSet = new Set(data?.map(d => d.permisos?.nombre).filter(Boolean));
-  return Array.from(permisosSet);
+  // Extraer nombre del permiso anidado
+  const permisos = data?.map((d: unknown) => (d as { permisos: { nombre: string } }).permisos?.nombre).filter(Boolean) || [];
+  return Array.from(new Set(permisos));
 }
 
 /**
