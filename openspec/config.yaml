@@ -1,0 +1,36 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Next.js 14 + React 18 + TypeScript + Supabase (supabase-js) + Tailwind CSS
+  Architecture: Next.js app router pattern
+  Testing: No test runner detected
+  Quality: ESLint, TypeScript
+
+strict_tdd: false
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Identify affected modules/packages
+  specs:
+    - Use Given/When/Then format for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include database schema changes as migrations
+  tasks:
+    - Group tasks by phase (infrastructure, implementation)
+    - Use hierarchical numbering (1.1, 1.2, etc.)
+  apply:
+    - Follow existing code patterns
+  verify:
+    - Compare implementation against spec scenarios
+
+testing:
+  strict_tdd: false
+  test_runner: null
+  unit: false
+  integration: false
+  e2e: false
+  coverage: false
+  linter: true
+  type_checker: true

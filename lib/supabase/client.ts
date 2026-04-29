@@ -52,3 +52,52 @@ export interface Pedido {
   cliente_direccion?: string;
   producto_nombre?: string;
 }
+
+// ============================================
+// AUTH HELPERS
+// ============================================
+
+/**
+ * Inicia sesión con email y password.
+ */
+export async function signIn(email: string, password: string) {
+  return supabase.auth.signInWithPassword({ email, password });
+}
+
+/**
+ * Registra un nuevo usuario con email y password.
+ */
+export async function signUp(email: string, password: string) {
+  return supabase.auth.signUp({ email, password });
+}
+
+/**
+ * Solicita recuperación de contraseña.
+ */
+export async function resetPassword(email: string) {
+  return supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/login?reset=true`,
+  });
+}
+
+/**
+ * Obtiene la sesión actual.
+ */
+export async function getSession() {
+  const { data } = await supabase.auth.getSession();
+  return data.session;
+}
+
+/**
+ * Cierra la sesión actual.
+ */
+export async function signOut() {
+  return supabase.auth.signOut();
+}
+
+/**
+ * Escucha cambios en el estado de autenticación.
+ */
+export function onAuthStateChange(callback: (event: string, session: unknown) => void) {
+  return supabase.auth.onAuthStateChange(callback);
+}

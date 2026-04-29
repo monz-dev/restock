@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { supabase, Pedido } from '@/lib/supabase/client';
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase, Pedido, getSession, onAuthStateChange } from '@/lib/supabase/client';
 
 /**
  * Dashboard: Provider realtime dashboard
@@ -22,11 +23,12 @@ interface OrdenGroup {
   cliente_direccion: string;
   cliente_url_maps: string;
   items: PedidoItem[];
-  estado: string; // derived from items (most advanced or first non-pendiente)
-  created_at: string; // earliest item timestamp
+  estado: string;
+  created_at: string;
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [pedidos, setPedidos] = useState<PedidoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
@@ -34,10 +36,28 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [darkMode, setDarkMode] = useState(true);
 
-  // Sync dark mode class on mount
+  // Check auth on mount
   useEffect(() => {
-    document.documentElement.classList.add('dark');
-  }, []);
+    async function checkAuth() {
+      const session = await getSession();
+      if (!session) {
+        router.push('/login');
+        return true;
+      }
+      return false;
+    }
+    checkAuth();
+  }, [router]);
+
+  // Listen for auth changes and redirect if signed out
+  useEffect(() => {
+    const { data: { subscription } } = onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        router.push('/login');
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [router]);
 
   useEffect(() => {
     async function fetchPedidos() {
