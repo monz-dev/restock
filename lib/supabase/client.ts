@@ -58,34 +58,61 @@ export interface Pedido {
 // ============================================
 
 export interface Rol {
-  id: string;
   nombre: string;
-  descripcion: string;
-  created_at: string;
 }
 
-export interface Permiso {
-  id: string;
-  nombre: string;
-  descripcion: string;
-  created_at: string;
-}
+// Mapeo de roles a permisos
+const ROL_PERMISOS: Record<string, string[]> = {
+  admin: [
+    'gestionar_usuarios',
+    'crear_productos',
+    'editar_productos',
+    'eliminar_productos',
+    'ver_todos_pedidos',
+    'editar_pedidos',
+    'gestionar_roles',
+    'ver_pedidos',
+    'crear_pedidos',
+    'ver_pedidos_propios',
+    'editar_pedidos_propios',
+    'ver_pedidos_despachados',
+    'actualizar_estado_entrega'
+  ],
+  proveedor: [
+    'crear_productos',
+    'editar_productos',
+    'eliminar_productos',
+    'ver_pedidos',
+    'crear_pedidos'
+  ],
+  cliente: [
+    'crear_pedidos',
+    'ver_pedidos_propios',
+    'editar_pedidos_propios'
+  ],
+  repartidor: [
+    'ver_pedidos_despachados',
+    'actualizar_estado_entrega'
+  ]
+};
 
 /**
- * Obtiene los roles del usuario actual.
+ * Obtiene los roles del usuario actual (del campo 'role' en user_roles).
  */
 export async function getUserRoles(): Promise<Rol[]> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.user) return [];
 
   const { data } = await supabase
-    .from('usuario_roles')
-    .select('rol_id, roles(id, nombre, descripcion, created_at)')
+    .from('user_roles')
+    .select('role')
     .eq('user_id', session.user.id);
 
-  // Extraer la relación roles de cada row
-  const roles = data?.map((d: unknown) => (d as { roles: Rol }).roles).filter(Boolean) || [];
-  return roles;
+  if (!data) return [];
+  
+  // Retornar roles únicos como objetos
+  const rolesUnicos = Array.from(new Set(data.map(d => d.role)));
+  return rolesUnicos.map(r => ({ nombre: r }));
 }
 
 /**
@@ -98,14 +125,14 @@ export async function getUserPermisos(): Promise<string[]> {
   const roles = await getUserRoles();
   if (roles.length === 0) return [];
 
-  const { data } = await supabase
-    .from('rol_permisos')
-    .select('permisos(nombre)')
-    .in('rol_id', roles.map(r => r.id));
+  // Collect permisos from all roles
+  const permisosSet = new Set<string>();
+  roles.forEach(rol => {
+    const permisosDelRol = ROL_PERMISOS[rol.nombre] || [];
+    permisosDelRol.forEach(p => permisosSet.add(p));
+  });
 
-  // Extraer nombre del permiso anidado
-  const permisos = data?.map((d: unknown) => (d as { permisos: { nombre: string } }).permisos?.nombre).filter(Boolean) || [];
-  return Array.from(new Set(permisos));
+  return Array.from(permisosSet);
 }
 
 /**
@@ -136,22 +163,25 @@ export async function getUserRolPrincipal(): Promise<string | null> {
  * Obtiene todos los roles disponibles en el sistema.
  */
 export async function getAllRoles(): Promise<Rol[]> {
-  const { data } = await supabase
-    .from('roles')
-    .select('*')
-    .order('nombre');
-  return data || [];
+  // Roles definidos en el sistema
+  return [
+    { nombre: 'admin' },
+    { nombre: 'proveedor' },
+    { nombre: 'cliente' },
+    { nombre: 'repartidor' }
+  ];
 }
 
 /**
  * Obtiene todos los permisos disponibles en el sistema.
  */
-export async function getAllPermisos(): Promise<Permiso[]> {
-  const { data } = await supabase
-    .from('permisos')
-    .select('*')
-    .order('nombre');
-  return data || [];
+export async function getAllPermisos(): Promise<{ nombre: string }[]> {
+  // Permisos únicos de todos los roles
+  const permisosSet = new Set<string>();
+  Object.values(ROL_PERMISOS).forEach(permisos => {
+    permisos.forEach(p => permisosSet.add(p));
+  });
+  return Array.from(permisosSet).map(p => ({ nombre: p }));
 }
 
 // ============================================
