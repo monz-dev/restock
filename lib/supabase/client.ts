@@ -54,6 +54,104 @@ export interface Pedido {
 }
 
 // ============================================
+// ROLES Y PERMISOS
+// ============================================
+
+export interface Rol {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  created_at: string;
+}
+
+export interface Permiso {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  created_at: string;
+}
+
+/**
+ * Obtiene los roles del usuario actual.
+ */
+export async function getUserRoles(): Promise<Rol[]> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) return [];
+
+  const { data } = await supabase
+    .from('usuario_roles')
+    .select('rol_id, roles(id, nombre, descripcion, created_at)')
+    .eq('user_id', session.user.id);
+
+  return data?.map(d => d.roles).filter(Boolean) || [];
+}
+
+/**
+ * Obtiene los permisos del usuario actual según sus roles.
+ */
+export async function getUserPermisos(): Promise<string[]> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) return [];
+
+  const roles = await getUserRoles();
+  if (roles.length === 0) return [];
+
+  const { data } = await supabase
+    .from('rol_permisos')
+    .select('permisos(nombre)')
+    .in('rol_id', roles.map(r => r.id));
+
+  const permisosSet = new Set(data?.map(d => d.permisos?.nombre).filter(Boolean));
+  return Array.from(permisosSet);
+}
+
+/**
+ * Verifica si el usuario actual tiene un permiso específico.
+ */
+export async function hasPermiso(permiso: string): Promise<boolean> {
+  const permisos = await getUserPermisos();
+  return permisos.includes(permiso);
+}
+
+/**
+ * Verifica si el usuario actual tiene un rol específico.
+ */
+export async function hasRol(rol: string): Promise<boolean> {
+  const roles = await getUserRoles();
+  return roles.some(r => r.nombre === rol);
+}
+
+/**
+ * Obtiene el rol principal del usuario (el primero que tenga).
+ */
+export async function getUserRolPrincipal(): Promise<string | null> {
+  const roles = await getUserRoles();
+  return roles[0]?.nombre || null;
+}
+
+/**
+ * Obtiene todos los roles disponibles en el sistema.
+ */
+export async function getAllRoles(): Promise<Rol[]> {
+  const { data } = await supabase
+    .from('roles')
+    .select('*')
+    .order('nombre');
+  return data || [];
+}
+
+/**
+ * Obtiene todos los permisos disponibles en el sistema.
+ */
+export async function getAllPermisos(): Promise<Permiso[]> {
+  const { data } = await supabase
+    .from('permisos')
+    .select('*')
+    .order('nombre');
+  return data || [];
+}
+
+// ============================================
 // AUTH HELPERS
 // ============================================
 

@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase, Pedido, getSession, onAuthStateChange } from '@/lib/supabase/client';
+import { supabase, Pedido, getSession, onAuthStateChange, getUserPermisos } from '@/lib/supabase/client';
+import { AuthGuard } from '@/components/AuthGuard';
 
 /**
  * Dashboard: Provider realtime dashboard
  * Styled with Slate Precision design system
  * Groups pedido items by orden_id — one card per order
+ * Protegido: requiere permiso 'ver_pedidos'
  */
 
 interface PedidoItem extends Pedido {
@@ -430,5 +432,17 @@ export default function DashboardPage() {
         </a>
       </nav>
     </div>
+  );
+}
+
+// Wrap con AuthGuard - requiere permiso 'ver_pedidos' o 'ver_todos_pedidos'
+export default function DashboardPage() {
+  return (
+    <AuthGuard 
+      requiredPermiso="ver_pedidos"
+      loadingMessage="Cargando dashboard..."
+    >
+      <DashboardContent />
+    </AuthGuard>
   );
 }
