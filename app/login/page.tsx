@@ -6,7 +6,7 @@ import { supabase, signIn, signUp, resetPassword, getSession, onAuthStateChange 
 
 /**
  * LoginPage - Pantalla de autenticación con login, registro y recuperación de contraseña
- * Todo en español con diseño minimalista
+ * Todo en español con diseño dark/light como el dashboard
  */
 type AuthMode = 'login' | 'signup' | 'forgot' | 'reset';
 
@@ -21,6 +21,22 @@ function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [darkMode, setDarkMode] = useState(true);
+
+  // Initialize dark mode on mount
+  useEffect(() => {
+    const isDark = document.documentElement.classList.contains('dark');
+    setDarkMode(isDark);
+  }, []);
+
+  function toggleDarkMode() {
+    setDarkMode(!darkMode);
+    if (!darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }
 
   // Check for reset token in URL
   useEffect(() => {
@@ -363,31 +379,61 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-surface grid-dot p-6">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="font-manrope text-2xl font-bold text-primary mb-2">
+    <div className="min-h-screen flex flex-col bg-surface grid-dot">
+      {/* TopAppBar */}
+      <header className="fixed top-0 left-0 z-50 flex justify-between items-center w-full px-6 h-16 bg-surface-bright border-b border-outline-variant">
+        <div className="flex items-center gap-4">
+          <h1 className="font-manrope text-sm font-semibold tracking-tight uppercase text-primary">
             Sistema de Pedidos
           </h1>
-          <p className="text-on-surface-variant">
-            {getTitle()}
-          </p>
         </div>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={toggleDarkMode}
+            aria-label="Cambiar tema" 
+            className="p-2 rounded transition-colors text-primary hover:bg-surface-high"
+          >
+            <span className="material-symbols-outlined">
+              {darkMode ? 'light_mode' : 'dark_mode'}
+            </span>
+          </button>
+        </div>
+      </header>
 
-        <div className="border border-outline-variant bg-surface-container rounded-xl p-6">
-          {error && (
-            <div className="mb-4 p-3 bg-error-container/20 border border-error rounded-lg">
-              <p className="text-sm text-error">{error}</p>
-            </div>
-          )}
-          {success && (
-            <div className="mb-4 p-3 bg-green-500/20 border border-green-500 rounded-lg">
-              <p className="text-sm text-green-600">{success}</p>
-            </div>
-          )}
-          {renderForm()}
+      {/* Main Content */}
+      <main className="flex-1 flex items-center justify-center p-6 pt-24">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <h2 className="font-h1 text-h1 text-on-surface mb-2">
+              {getTitle()}
+            </h2>
+            <p className="text-body-md text-on-surface-variant">
+              Ingresa tus credenciales para continuar
+            </p>
+          </div>
+
+          <div className="border border-outline-variant bg-surface-container rounded-xl p-6 shadow-lg">
+            {error && (
+              <div className="mb-4 p-3 bg-error-container/20 border border-error rounded-lg">
+                <p className="text-sm text-error">{error}</p>
+              </div>
+            )}
+            {success && (
+              <div className="mb-4 p-3 bg-green-500/20 border border-green-500 rounded-lg">
+                <p className="text-sm text-green-600">{success}</p>
+              </div>
+            )}
+            {renderForm()}
+          </div>
         </div>
-      </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="py-6 text-center">
+        <p className="text-body-sm text-on-surface-variant">
+          © 2026 Sistema de Pedidos
+        </p>
+      </footer>
     </div>
   );
 }
@@ -406,4 +452,11 @@ export default function LoginPage() {
       <LoginForm />
     </Suspense>
   );
+}
+
+// Make sure to add dark class to html element on app initialization
+if (typeof window !== 'undefined') {
+  if (!document.documentElement.classList.contains('dark')) {
+    document.documentElement.classList.add('dark');
+  }
 }
