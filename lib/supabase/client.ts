@@ -23,6 +23,7 @@ export interface Proveedor {
   nombre: string;
   slug: string;
   activo: boolean;
+  url_logo: string | null;
   created_at: string;
 }
 

@@ -271,7 +271,20 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
                 {/* Proveedor Header */}
                 <div className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-3xl text-primary">store</span>
+                    {proveedor.url_logo ? (
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-surface-high flex items-center justify-center">
+                        <img 
+                          src={proveedor.url_logo} 
+                          alt={`Logo ${proveedor.nombre}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <span className="material-symbols-outlined text-3xl text-primary">store</span>
+                    )}
                     <div>
                       <h3 className="font-bold text-on-surface">{proveedor.nombre}</h3>
                       <p className="text-xs text-on-surface-variant">
