@@ -16,6 +16,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<AuthMode>('login');
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [email, setEmail] = useState('');
@@ -48,9 +49,12 @@ function LoginForm() {
   // Check for existing session on mount
   useEffect(() => {
     async function checkSession() {
+      setCheckingSession(true);
       const session = await getSession();
       if (session) {
         router.push('/dashboard');
+      } else {
+        setCheckingSession(false);
       }
     }
     checkSession();
@@ -376,6 +380,18 @@ function LoginForm() {
       default:
         return 'Iniciar Sesión';
     }
+  }
+
+  // Show loading while checking session
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-surface grid-dot">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-surface-high border-t-primary-container rounded-full animate-spin" />
+          <p className="text-sm text-on-surface-variant">Verificando sesión...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
