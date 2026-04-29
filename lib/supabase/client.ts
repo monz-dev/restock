@@ -45,6 +45,8 @@ export interface Pedido {
   // Extended estados para workflow completo: pendiente -> despachado -> entregado
   estado: 'pendiente' | 'despachado' | 'entregado' | 'atendido';
   created_at: string;
+  // Grouping: same orden_id = same order submission
+  orden_id?: string;
   // Joined fields
   cliente_nombre?: string;
   cliente_direccion?: string;

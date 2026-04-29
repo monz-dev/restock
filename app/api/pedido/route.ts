@@ -111,12 +111,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Prepare pedidos for insertion
+    // Generate a single orden_id for this batch submission
+    const ordenId = crypto.randomUUID();
+
+    // Prepare pedidos for insertion - all items share the same orden_id
     const pedidosToInsert = pedidosInput.map(p => ({
       cliente_id: cliente.id,
       producto_id: p.producto_id,
       cantidad: p.cantidad,
-      estado: 'pendiente'
+      estado: 'pendiente',
+      orden_id: ordenId
     }));
 
     // Insert all pedidos

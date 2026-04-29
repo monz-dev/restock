@@ -6,21 +6,31 @@ import { supabase, Pedido } from '@/lib/supabase/client';
 /**
  * Dashboard: Provider realtime dashboard
  * Styled with Slate Precision design system
- * Uses unified palette - dark mode via CSS variables
+ * Groups pedido items by orden_id — one card per order
  */
 
-interface PedidoWithDetails extends Pedido {
+interface PedidoItem extends Pedido {
   cliente_nombre?: string;
   cliente_direccion?: string;
   cliente_url_maps?: string;
   producto_nombre?: string;
 }
 
+interface OrdenGroup {
+  orden_id: string;
+  cliente_nombre: string;
+  cliente_direccion: string;
+  cliente_url_maps: string;
+  items: PedidoItem[];
+  estado: string; // derived from items (most advanced or first non-pendiente)
+  created_at: string; // earliest item timestamp
+}
+
 export default function DashboardPage() {
-  const [pedidos, setPedidos] = useState<PedidoWithDetails[]>([]);
+  const [pedidos, setPedidos] = useState<PedidoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
-  const [latestPedido, setLatestPedido] = useState<PedidoWithDetails | null>(null);
+  const [latestOrden, setLatestOrden] = useState<OrdenGroup | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [darkMode, setDarkMode] = useState(true);
 
@@ -36,7 +46,7 @@ export default function DashboardPage() {
           .from('pedidos')
           .select('*')
           .order('created_at', { ascending: false })
-          .limit(50);
+          .limit(200);
 
         if (error) throw error;
 
@@ -84,17 +94,29 @@ export default function DashboardPage() {
         const { data: producto } = await supabase
           .from('productos').select('nombre').eq('id', newPedido.producto_id).single();
 
-        const pedidoWithDetails: PedidoWithDetails = {
+        const pedidoWithDetails: PedidoItem = {
           ...newPedido,
           cliente_nombre: cliente?.nombre,
           cliente_url_maps: cliente?.url_maps,
           producto_nombre: producto?.nombre
         };
 
-        setLatestPedido(pedidoWithDetails);
-        setPedidos(prev => [pedidoWithDetails, ...prev.slice(0, 49)]);
+        setPedidos(prev => [pedidoWithDetails, ...prev.slice(0, 199)]);
 
-        setTimeout(() => setLatestPedido(null), 4000);
+        // Show toast for new order group
+        const ordenId = newPedido.orden_id || newPedido.id;
+        const group: OrdenGroup = {
+          orden_id: ordenId,
+          cliente_nombre: cliente?.nombre || 'Cliente',
+          cliente_direccion: '',
+          cliente_url_maps: cliente?.url_maps || '',
+          items: [pedidoWithDetails],
+          estado: newPedido.estado,
+          created_at: newPedido.created_at
+        };
+        setLatestOrden(group);
+
+        setTimeout(() => setLatestOrden(null), 4000);
       })
       .subscribe((status) => {
         setIsConnected(status === 'SUBSCRIBED');
@@ -105,29 +127,63 @@ export default function DashboardPage() {
     };
   }, []);
 
-  async function toggleAtendido(pedido: PedidoWithDetails) {
+  async function toggleAtendido(orden: OrdenGroup) {
     const estadoFlow: Record<string, Pedido['estado']> = {
       pendiente: 'despachado',
       despachado: 'entregado',
       entregado: 'pendiente',
       atendido: 'entregado'
     };
-    const newEstado = estadoFlow[pedido.estado] || 'pendiente';
+    const newEstado = estadoFlow[orden.estado] || 'pendiente';
 
+    // Update all items in the same orden_id
+    const itemIds = orden.items.map(item => item.id);
     setPedidos(prev =>
-      prev.map(p => p.id === pedido.id ? { ...p, estado: newEstado } : p)
+      prev.map(p => itemIds.includes(p.id) ? { ...p, estado: newEstado } : p)
     );
 
     const { error } = await supabase
       .from('pedidos')
       .update({ estado: newEstado })
-      .eq('id', pedido.id);
+      .in('id', itemIds);
 
     if (error) {
       setPedidos(prev =>
-        prev.map(p => p.id === pedido.id ? { ...p, estado: pedido.estado } : p)
+        prev.map(p => itemIds.includes(p.id) ? { ...p, estado: p.estado } : p)
       );
     }
+  }
+
+  function groupPedidosByOrden(pedidos: PedidoItem[]): OrdenGroup[] {
+    const groups = new Map<string, PedidoItem[]>();
+
+    for (const p of pedidos) {
+      const key = p.orden_id || p.id; // fallback for legacy items without orden_id
+      if (!groups.has(key)) {
+        groups.set(key, []);
+      }
+      groups.get(key)!.push(p);
+    }
+
+    const result: OrdenGroup[] = [];
+    for (const [ordenId, items] of groups.entries()) {
+      const first = items[0];
+      result.push({
+        orden_id: ordenId,
+        cliente_nombre: first.cliente_nombre || 'Cliente',
+        cliente_direccion: first.cliente_direccion || '',
+        cliente_url_maps: first.cliente_url_maps || '',
+        items,
+        estado: first.estado,
+        created_at: items.reduce((earliest, item) =>
+          new Date(item.created_at) < new Date(earliest) ? item.created_at : earliest
+        , items[0].created_at)
+      });
+    }
+
+    // Sort by most recent first
+    result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return result;
   }
 
   function formatTime(dateStr: string) {
@@ -150,10 +206,12 @@ export default function DashboardPage() {
     return date.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
   }
 
-  const filteredPedidos = pedidos.filter(p => {
+  const ordenes = groupPedidosByOrden(pedidos);
+
+  const filteredOrdenes = ordenes.filter(o => {
     const matchesSearch = !searchQuery || 
-      p.cliente_nombre?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.producto_nombre?.toLowerCase().includes(searchQuery.toLowerCase());
+      o.cliente_nombre?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      o.items.some(item => item.producto_nombre?.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesSearch;
   });
 
@@ -204,8 +262,8 @@ export default function DashboardPage() {
 
       {/* Main Content */}
       <main className="pt-24 pb-32 px-6 max-w-7xl mx-auto w-full">
-        {/* New pedido toast */}
-        {latestPedido && latestPedido.estado === 'pendiente' && (
+        {/* New orden toast */}
+        {latestOrden && (
           <div className="fixed top-20 left-4 right-4 z-20 animate-in slide-in-from-top-4 duration-300">
             <div className="max-w-md mx-auto border border-primary-container rounded-xl p-4 shadow-xl bg-surface-container">
               <div className="flex items-center gap-3">
@@ -215,7 +273,7 @@ export default function DashboardPage() {
                 <div>
                   <p className="font-semibold text-on-surface">Nuevo pedido</p>
                   <p className="text-sm text-on-surface-variant">
-                    {latestPedido.producto_nombre} — {latestPedido.cliente_nombre}
+                    {latestOrden.cliente_nombre} — {latestOrden.items.length} item(s)
                   </p>
                 </div>
               </div>
@@ -256,7 +314,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Order Cards */}
-          {filteredPedidos.length === 0 ? (
+          {filteredOrdenes.length === 0 ? (
             <div className="border border-outline-variant bg-surface-container rounded-lg p-12 text-center">
               <span className="material-icons text-6xl text-outline mb-4">inbox</span>
               <h3 className="font-h2 text-h2 mb-2 text-on-surface">Sin pedidos</h3>
@@ -266,53 +324,60 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredPedidos.map(pedido => (
+              {filteredOrdenes.map(orden => (
                 <div 
-                  key={pedido.id} 
+                  key={orden.orden_id} 
                   className="border border-outline-variant bg-surface-container rounded-lg overflow-hidden hover:border-outline transition-all flex flex-col h-full"
                 >
+                  {/* Header */}
                   <div className="p-6 border-b border-outline-variant bg-surface-high/50">
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="font-semibold text-base truncate text-primary">
-                        {pedido.cliente_nombre || 'Cliente'}
+                        {orden.cliente_nombre}
                       </h3>
                       <span className={`px-2 py-1 text-[10px] font-bold rounded uppercase border ${
-pedido.estado === 'pendiente' ? 'bg-status-pendiente-bg text-status-pendiente border-status-pendiente' :
-                          pedido.estado === 'despachado' ? 'bg-status-despachado-bg text-status-despachado border-status-despachado' :
-                          'bg-status-entregado-bg text-status-entregado border-status-entregado'
+                        orden.estado === 'pendiente' ? 'bg-status-pendiente-bg text-status-pendiente border-status-pendiente' :
+                        orden.estado === 'despachado' ? 'bg-status-despachado-bg text-status-despachado border-status-despachado' :
+                        'bg-status-entregado-bg text-status-entregado border-status-entregado'
                       }`}>
-                        {pedido.estado}
+                        {orden.estado}
                       </span>
                     </div>
                     <a 
-                      href={pedido.cliente_url_maps || '#'} 
+                      href={orden.cliente_url_maps || '#'} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className={`text-body-sm text-on-surface-variant flex items-center gap-1 hover:opacity-80 hover:scale-105 transition-all duration-200 ${!pedido.cliente_url_maps ? 'pointer-events-none' : ''}`}
+                      className={`text-body-sm text-on-surface-variant flex items-center gap-1 hover:opacity-80 hover:scale-105 transition-all duration-200 ${!orden.cliente_url_maps ? 'pointer-events-none' : ''}`}
                     >
                       <span className="material-symbols-outlined text-sm">location_on</span>
-                      {pedido.cliente_direccion || 'Sin dirección'}
+                      {orden.cliente_direccion || 'Sin dirección'}
                     </a>
                   </div>
+
+                  {/* Items List */}
                   <div className="p-6 flex-grow">
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-body-sm text-on-surface font-medium">
-                          {pedido.cantidad}x {pedido.producto_nombre || 'Producto'}
-                        </span>
-                        <span className="font-data-mono text-data-mono text-on-surface-variant">
-                          #{pedido.id.slice(0, 4)}
-                        </span>
-                      </div>
-                      <div className="text-[12px] text-on-surface-variant flex items-center gap-2">
-                        <span className="material-symbols-outlined text-sm">schedule</span>
-                        {formatTime(pedido.created_at)} - {formatDate(pedido.created_at)}
-                      </div>
+                    <div className="space-y-2">
+                      {orden.items.map(item => (
+                        <div key={item.id} className="flex justify-between items-center text-body-sm">
+                          <span className="text-on-surface font-medium">
+                            {item.cantidad}x {item.producto_nombre || 'Producto'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="text-[12px] text-on-surface-variant flex items-center gap-2 mt-4">
+                      <span className="material-symbols-outlined text-sm">schedule</span>
+                      {formatTime(orden.created_at)} - {formatDate(orden.created_at)}
+                      <span className="ml-auto font-data-mono text-data-mono">
+                        #{orden.orden_id.slice(0, 4)}
+                      </span>
                     </div>
                   </div>
+
+                  {/* Footer */}
                   <div className="p-4 bg-surface-low mt-auto">
                     <button 
-                      onClick={() => toggleAtendido(pedido)}
+                      onClick={() => toggleAtendido(orden)}
                       className="w-full bg-surface-high hover:bg-surface-highest text-primary border border-outline-variant py-3 rounded text-label-caps uppercase transition-all active:scale-95"
                     >
                       Cambiar Estado
