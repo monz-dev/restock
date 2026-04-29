@@ -51,25 +51,35 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
       setCliente(clienteData);
 
       // Fetch active proveedores
-      const { data: proveedoresData } = await supabase
+      const { data: proveedoresData, error: proveedoresError } = await supabase
         .from('proveedores')
         .select('*')
         .eq('activo', true)
         .order('nombre');
 
-      // Fetch products with proveedor info
-      const { data: productosData } = await supabase
+      if (proveedoresError) {
+        console.error('Error fetching proveedores:', proveedoresError);
+      }
+
+      // Fetch active products
+      const { data: productosData, error: productosError } = await supabase
         .from('productos')
-        .select('*, proveedores(id, nombre)')
+        .select('*')
         .eq('activo', true);
 
-      if (proveedoresData && productosData) {
+      if (productosError) {
+        console.error('Error fetching productos:', productosError);
+      }
+
+      if (proveedoresData) {
         // Group products by proveedor
         const proveedoresConProductos: ProveedorConProductos[] = proveedoresData.map(prov => ({
           ...prov,
           productos: productosData
-            .filter(p => p.proveedor_id === prov.id)
-            .map(p => ({ ...p, cantidadSeleccionada: 0 })),
+            ? productosData
+                .filter(p => p.proveedor_id === prov.id)
+                .map(p => ({ ...p, cantidadSeleccionada: 0 }))
+            : [],
           expanded: false
         }));
         setProveedores(proveedoresConProductos);
