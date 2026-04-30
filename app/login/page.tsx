@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase, signIn, signUp, resetPassword, getSession, onAuthStateChange } from '@/lib/supabase/client';
+import { supabase, signIn, signUp, resetPassword, getSession, onAuthStateChange, getUserRoles } from '@/lib/supabase/client';
 
 /**
  * LoginPage - Pantalla de autenticación con login, registro y recuperación de contraseña
@@ -46,13 +46,26 @@ function LoginForm() {
     }
   }, [searchParams]);
 
+// Redirect based on user role
+  async function redirectByRole(routerInstance: typeof router) {
+    const roles = await getUserRoles();
+    const rolNames = roles.map(r => r.nombre);
+    
+    // Cliente goes to mis-pedidos, others go to dashboard
+    if (rolNames.includes('cliente')) {
+      routerInstance.push('/mis-pedidos');
+    } else {
+      routerInstance.push('/dashboard');
+    }
+  }
+
   // Check for existing session on mount
   useEffect(() => {
     async function checkSession() {
       setCheckingSession(true);
       const session = await getSession();
       if (session) {
-        router.push('/dashboard');
+        await redirectByRole(router);
       } else {
         setCheckingSession(false);
       }
@@ -60,11 +73,11 @@ function LoginForm() {
     checkSession();
   }, [router]);
 
-  // Listen for auth changes
+// Listen for auth changes
   useEffect(() => {
-    const { data: { subscription } } = onAuthStateChange((event, session) => {
+    const { data: { subscription } } = onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        router.push('/dashboard');
+        await redirectByRole(router);
       }
     });
     return () => subscription.unsubscribe();
@@ -100,9 +113,9 @@ function LoginForm() {
         return;
       }
 
-      if (data?.user) {
+if (data?.user) {
         setSuccess('¡Bienvenido de nuevo!');
-        router.push('/dashboard');
+        await redirectByRole(router);
       }
     } catch (err) {
       setError('Error al iniciar sesión');
@@ -146,9 +159,9 @@ function LoginForm() {
       // Check if email confirmation is required
       if (data?.user && !data.session) {
         setSuccess('¡Revisa tu email para confirmar tu cuenta!');
-      } else if (data?.user) {
+} else if (data?.user) {
         setSuccess('¡Bienvenido! Ya puedes usar tu cuenta.');
-        router.push('/dashboard');
+        await redirectByRole(router);
       }
     } catch (err) {
       setError('Error al registrarte');
@@ -178,8 +191,8 @@ function LoginForm() {
               rol_id: roles.id
             });
           }
-        }
-        router.push('/dashboard');
+}
+        await redirectByRole(router);
       }
     });
     return () => subscription.unsubscribe();
