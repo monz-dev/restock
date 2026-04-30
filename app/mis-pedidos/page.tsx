@@ -62,7 +62,7 @@ function MisPedidosContent() {
           .eq('cliente_id', clienteData.cliente.id)
           .order('created_at', { ascending: false });
         // Get producto details for each pedido
-        const productoIds = [...new Set((pedidosData || []).map(p => p.producto_id))];
+        const productoIds = Array.from(new Set((pedidosData || []).map(p => p.producto_ id)));
         const { data: productos } = await supabase
           .from('productos')
           .select('id, nombre, precio, unidad_medida')
