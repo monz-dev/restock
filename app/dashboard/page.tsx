@@ -291,7 +291,7 @@ function DashboardContent() {
         .select('*, rol:roles(*)');
       
       // Get unique user_ids
-      const userIds = [...new Set((usuarioRoles || []).map(ur => ur.user_id))];
+      const userIds = Array.from(new Set((usuarioRoles || []).map(ur => ur.user_id)));
       
       // Get all clientes
       const { data: clientes } = await supabase.from('clientes').select('*');
