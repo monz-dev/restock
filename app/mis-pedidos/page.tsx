@@ -1,9 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase, getSession, getUserRoles } from '@/lib/ supabase/client';
+import { supabase, getSession, getUserRoles } from '@/lib/supabase/client';
 import { AuthGuard } from '@/components/AuthGuard';
-/ **
+/**
  * MisPedidosPage - Vista de pedidos para clientes
  * Muestra los pedidos que los clientes asignados al usuario han hecho
  */
