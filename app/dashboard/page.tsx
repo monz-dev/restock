@@ -39,6 +39,12 @@ function DashboardContent() {
   const [darkMode, setDarkMode] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  
+  // Admin panel state
+  const [adminUsers, setAdminUsers] = useState<any[]>([]);
+  const [clientesList, setClientesList] = useState<any[]>([]);
+  const [assigningUserId, setAssigningUserId] = useState<string | null>(null);
+  const [loadingAdmin, setLoadingAdmin] = useState(false);
 
   // Check auth on mount
   useEffect(() => {
@@ -71,6 +77,13 @@ function DashboardContent() {
     }
     checkAdmin();
   }, []);
+
+  // Load admin data when panel opens
+  useEffect(() => {
+    if (isAdmin && showAdminPanel && adminUsers.length === 0) {
+      loadAdminData();
+    }
+  }, [isAdmin, showAdminPanel]);
 
   // Fetch pedidos on mount
   useEffect(() => {
@@ -263,6 +276,68 @@ function DashboardContent() {
     router.push('/login');
   }
 
+  // Admin functions
+  async function loadAdminData() {
+    if (!isAdmin) return;
+    setLoadingAdmin(true);
+    try {
+      // Get all roles
+      const { data: roles } = await supabase.from('roles').select('*');
+      const roleMap = new Map((roles || []).map(r => [r.id, r]));
+      
+      // Get all usuario_roles with roles info
+      const { data: usuarioRoles } = await supabase
+        .from('usuario_roles')
+        .select('*, rol:roles(*)');
+      
+      // Get unique user_ids
+      const userIds = [...new Set((usuarioRoles || []).map(ur => ur.user_id))];
+      
+      // Get all clientes
+      const { data: clientes } = await supabase.from('clientes').select('*');
+      
+      // Build user list with their roles (we can't get email from auth.users directly)
+      setAdminUsers(userIds.map(id => {
+        const ur = usuarioRoles?.find(u => u.user_id === id);
+        return {
+          id,
+          email: 'Usuario registrado',
+          roles: ur?.rol ? [ur.rol] : []
+        };
+      }));
+      setClientesList(clientes || []);
+    } catch (err) {
+      console.error('Error loading admin data:', err);
+    } finally {
+      setLoadingAdmin(false);
+    }
+  }
+
+  async function assignClientToUser(userId: string, clienteId: string) {
+    if (!userId || !clienteId) {
+      alert('Selecciona un usuario y un cliente');
+      return;
+    }
+    try {
+      const { error } = await supabase.from('usuario_clientes').insert({
+        usuario_id: userId,
+        cliente_id: clienteId
+      });
+      if (error) {
+        if (error.message.includes('duplicate')) {
+          alert('Este cliente ya está asignado a este usuario');
+        } else {
+          alert('Error: ' + error.message);
+        }
+      } else {
+        alert('Cliente asignado correctamente');
+        setAssigningUserId(null);
+      }
+    } catch (err: any) {
+      alert('Error al asignar cliente');
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface grid-dot">
@@ -359,13 +434,77 @@ function DashboardContent() {
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
-            <p className="text-sm text-on-surface-variant mb-4">
-              Gestiona usuarios y asígnales clientes.
-            </p>
-            <div className="text-center text-on-surface-variant py-8">
-              <span className="material-symbols-outlined text-4xl">admin_panel_settings</span>
-              <p className="mt-2">Panel de admin en desarrollo</p>
-            </div>
+            
+            {loadingAdmin ? (
+              <p className="text-on-surface-variant">Cargando...</p>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-on-surface-variant">
+                 Asigna clientes a usuarios registrados.
+                </p>
+                
+                {/* User list */}
+                <div className="space-y-2">
+                  <h3 className="font-medium text-on-surface">Usuarios</h3>
+                  {adminUsers.length === 0 ? (
+                    <p className="text-sm text-on-surface-variant">No hay usuarios</p>
+                  ) : (
+                    adminUsers.map(user => (
+                      <div 
+                        key={user.id} 
+                        className="flex items-center justify-between p-3 bg-surface-low rounded border border-outline-variant"
+                      >
+                        <div>
+                          <p className="text-on-surface font-medium">{user.email}</p>
+                          <p className="text-xs text-on-surface-variant">
+                            Roles: {user.roles?.map((r: any) => r.nombre).join(', ') || 'Sin rol'}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setAssigningUserId(user.id)}
+                          className="px-3 py-1 bg-primary-container text-on-primary-container rounded text-sm"
+                        >
+                          Asignar Cliente
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Assign client modal/form */}
+                {assigningUserId && (
+                  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-surface-container p-4 rounded-lg border border-outline-variant max-w-md w-full">
+                      <h3 className="font-semibold text-on-surface mb-4">Asignar Cliente</h3>
+                      
+                      {clientesList.length === 0 ? (
+                        <p className="text-on-surface-variant">No hay clientes</p>
+                      ) : (
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {clientesList.map(cliente => (
+                            <button
+                              key={cliente.id}
+                              onClick={() => assignClientToUser(assigningUserId, cliente.id)}
+                              className="w-full p-3 text-left bg-surface-low hover:bg-surface-high rounded border border-outline-variant"
+                            >
+                              <p className="text-on-surface font-medium">{cliente.nombre}</p>
+                              <p className="text-xs text-on-surface-variant">{cliente.direccion}</p>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      
+                      <button
+                        onClick={() => setAssigningUserId(null)}
+                        className="mt-4 w-full p-2 border border-outline-variant rounded text-on-surface"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </section>
         )}
 
