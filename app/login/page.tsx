@@ -161,17 +161,20 @@ function LoginForm() {
   useEffect(() => {
     const { data: { subscription } } = onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
+        const userId = (session as any).user?.id;
+        if (!userId) return;
+        
         // Check if user has any role, if not assign cliente
         const { data: usuarioRoles } = await supabase
           .from('usuario_roles')
           .select('id')
-          .eq('user_id', session.user.id);
+          .eq('user_id', userId);
         
         if (!usuarioRoles || usuarioRoles.length === 0) {
           const { data: roles } = await supabase.from('roles').select('id').eq('nombre', 'cliente').single();
           if (roles) {
             await supabase.from('usuario_roles').insert({
-              user_id: session.user.id,
+              user_id: userId,
               rol_id: roles.id
             });
           }
