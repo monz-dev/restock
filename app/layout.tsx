@@ -32,8 +32,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es">
+    <html lang="es" className="dark">
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (!document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.add('dark');
+              }
+            `,
+          }}
+        />
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/icon?family=Material+Icons"

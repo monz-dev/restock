@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase, Pedido, getSession, onAuthStateChange, getUserPermisos } from '@/lib/supabase/client';
+import { supabase, Pedido, getSession, onAuthStateChange, getUserPermisos, signOut, getUserRoles } from '@/lib/supabase/client';
 import { AuthGuard } from '@/components/AuthGuard';
 
 /**
@@ -37,6 +37,8 @@ function DashboardContent() {
   const [latestOrden, setLatestOrden] = useState<OrdenGroup | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [darkMode, setDarkMode] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   // Check auth on mount
   useEffect(() => {
@@ -57,10 +59,20 @@ function DashboardContent() {
       if (event === 'SIGNED_OUT') {
         router.push('/login');
       }
-    });
+});
     return () => subscription.unsubscribe();
   }, [router]);
 
+  // Check if user is admin
+  useEffect(() => {
+    async function checkAdmin() {
+      const roles = await getUserRoles();
+      setIsAdmin(roles.some(r => r.nombre === 'admin'));
+    }
+    checkAdmin();
+  }, []);
+
+  // Fetch pedidos on mount
   useEffect(() => {
     async function fetchPedidos() {
       try {
@@ -246,6 +258,11 @@ function DashboardContent() {
     }
   }
 
+  async function handleLogout() {
+    await signOut();
+    router.push('/login');
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface grid-dot">
@@ -277,6 +294,15 @@ function DashboardContent() {
           >
             <span className="material-symbols-outlined">
               {darkMode ? 'light_mode' : 'dark_mode'}
+            </span>
+          </button>
+          <button 
+            onClick={handleLogout}
+            aria-label="Cerrar sesión" 
+            className="p-2 rounded transition-colors text-primary hover:bg-surface-high"
+          >
+            <span className="material-symbols-outlined">
+              logout
             </span>
           </button>
         </div>
@@ -320,6 +346,28 @@ function DashboardContent() {
             </div>
           </div>
         </section>
+
+        {/* Admin Panel - Solo visible para admin */}
+        {isAdmin && showAdminPanel && (
+          <section className="mb-8 p-4 border-2 border-primary-container bg-surface-container rounded-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-lg text-primary">Panel de Administración</h2>
+              <button 
+                onClick={() => setShowAdminPanel(false)}
+                className="p-1 hover:bg-surface-high rounded"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <p className="text-sm text-on-surface-variant mb-4">
+              Gestiona usuarios y asígnales clientes.
+            </p>
+            <div className="text-center text-on-surface-variant py-8">
+              <span className="material-symbols-outlined text-4xl">admin_panel_settings</span>
+              <p className="mt-2">Panel de admin en desarrollo</p>
+            </div>
+          </section>
+        )}
 
         {/* Order List Section */}
         <section className="space-y-4">
@@ -426,10 +474,20 @@ function DashboardContent() {
           <span className="material-symbols-outlined">groups</span>
           <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">Clientes</span>
         </a>
-        <a className="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-150" href="#">
-          <span className="material-symbols-outlined">settings</span>
-          <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">Ajustes</span>
-        </a>
+        {isAdmin ? (
+          <button 
+            onClick={() => setShowAdminPanel(!showAdminPanel)}
+            className={`flex flex-col items-center justify-center transition-all active:scale-90 duration-150 ${showAdminPanel ? 'text-primary' : 'text-on-surface-variant'}`}
+          >
+            <span className="material-symbols-outlined">admin_panel_settings</span>
+            <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">Admin</span>
+          </button>
+        ) : (
+          <a className="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-150" href="#">
+            <span className="material-symbols-outlined">settings</span>
+            <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">Ajustes</span>
+          </a>
+        )}
       </nav>
     </div>
   );

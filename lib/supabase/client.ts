@@ -54,11 +54,13 @@ export interface Pedido {
 }
 
 // ============================================
-// ROLES Y PERMISOS
+// ROLES Y PERMISOS (usando tablas roles + usuario_roles)
 // ============================================
 
 export interface Rol {
+  id: string;
   nombre: string;
+  descripcion?: string;
 }
 
 // Mapeo de roles a permisos
@@ -97,22 +99,29 @@ const ROL_PERMISOS: Record<string, string[]> = {
 };
 
 /**
- * Obtiene los roles del usuario actual (del campo 'role' en user_roles).
+ * Obtiene los roles del usuario actual (de usuario_roles + roles).
  */
 export async function getUserRoles(): Promise<Rol[]> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.user) return [];
 
-  const { data } = await supabase
-    .from('user_roles')
-    .select('role')
+  // Primero obtener los rol_id del usuario
+  const { data: usuarioRoles } = await supabase
+    .from('usuario_roles')
+    .select('rol_id')
     .eq('user_id', session.user.id);
 
-  if (!data) return [];
-  
-  // Retornar roles únicos como objetos
-  const rolesUnicos = Array.from(new Set(data.map(d => d.role)));
-  return rolesUnicos.map(r => ({ nombre: r }));
+  if (!usuarioRoles || usuarioRoles.length === 0) return [];
+
+  const rolIds = usuarioRoles.map(ur => ur.rol_id);
+
+  // Luego traer los nombres de los roles
+  const { data: roles } = await supabase
+    .from('roles')
+    .select('*')
+    .in('id', rolIds);
+
+  return roles || [];
 }
 
 /**
@@ -163,13 +172,12 @@ export async function getUserRolPrincipal(): Promise<string | null> {
  * Obtiene todos los roles disponibles en el sistema.
  */
 export async function getAllRoles(): Promise<Rol[]> {
-  // Roles definidos en el sistema
-  return [
-    { nombre: 'admin' },
-    { nombre: 'proveedor' },
-    { nombre: 'cliente' },
-    { nombre: 'repartidor' }
-  ];
+  const { data } = await supabase
+    .from('roles')
+    .select('*')
+    .order('nombre');
+
+  return data || [];
 }
 
 /**

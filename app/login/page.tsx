@@ -146,7 +146,7 @@ function LoginForm() {
       // Check if email confirmation is required
       if (data?.user && !data.session) {
         setSuccess('¡Revisa tu email para confirmar tu cuenta!');
-      } else {
+      } else if (data?.user) {
         setSuccess('¡Bienvenido! Ya puedes usar tu cuenta.');
         router.push('/dashboard');
       }
@@ -156,6 +156,31 @@ function LoginForm() {
       setLoading(false);
     }
   }
+
+  // Listen for auth changes - assign role on first login
+  useEffect(() => {
+    const { data: { subscription } } = onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        // Check if user has any role, if not assign cliente
+        const { data: usuarioRoles } = await supabase
+          .from('usuario_roles')
+          .select('id')
+          .eq('user_id', session.user.id);
+        
+        if (!usuarioRoles || usuarioRoles.length === 0) {
+          const { data: roles } = await supabase.from('roles').select('id').eq('nombre', 'cliente').single();
+          if (roles) {
+            await supabase.from('usuario_roles').insert({
+              user_id: session.user.id,
+              rol_id: roles.id
+            });
+          }
+        }
+        router.push('/dashboard');
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [router]);
 
   async function handleForgotPassword(e: React.FormEvent) {
     e.preventDefault();
