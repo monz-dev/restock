@@ -16,6 +16,8 @@ interface PedidoItem {
   producto_nombre?: string;
   producto_precio?: number;
   unidad_medida?: string;
+  proveedor_nombre?: string;
+  proveedor_logo?: string;
 }
 
 interface OrdenGroup {
@@ -31,8 +33,10 @@ function MisPedidosContent() {
   const [pedidos, setPedidos] = useState<PedidoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [clienteAsignado, setClienteAsignado] = useState<any>(null);
+  const [clientesAsignados, setClientesAsignados] = useState<any[]>([]);
   const [error, setError] = useState('');
   const [darkMode, setDarkMode] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Dark mode toggle
   useEffect(() => {
@@ -64,57 +68,49 @@ function MisPedidosContent() {
         }
 
         const userId = (session as any).user?.id;
-        console.log('User ID from session:', userId);
 
-        // Get assigned client ID for this user
-        const { data: usuarioCliente, error: ucError } = await supabase
+        // Get all assigned clients for this user
+        const { data: allAssignments, error: assignmentsError } = await supabase
           .from('usuario_clientes')
           .select('cliente_id')
-          .eq('usuario_id', userId)
-          .maybeSingle();
+          .eq('usuario_id', userId);
 
-        console.log('usuario_clientes result for user:', { usuarioCliente, ucError });
-
-        if (ucError) {
-          console.error('Error fetching usuario_clientes:', ucError);
+        if (assignmentsError) {
+          console.error('Error fetching assignments:', assignmentsError);
           setError('Error al cargar datos');
           setLoading(false);
           return;
         }
 
-        if (!usuarioCliente) {
+        if (!allAssignments || allAssignments.length === 0) {
           setError('No tienes clientes asignados. Contacta al administrador.');
           setLoading(false);
           return;
         }
 
-        // Fetch cliente details separately
-        const { data: clienteData, error: clienteError } = await supabase
+        // Get all assigned clientes details
+        const clienteIds = allAssignments.map((a: any) => a.cliente_id);
+        const { data: clientesData, error: clientesError } = await supabase
           .from('clientes')
           .select('*')
-          .eq('id', usuarioCliente.cliente_id)
-          .maybeSingle();
+          .in('id', clienteIds);
 
-        if (clienteError) {
-          console.error('Error fetching cliente:', clienteError);
-          setError('Error al cargar datos del cliente');
-          setLoading(false);
-          return;
+        if (clientesError) {
+          console.error('Error fetching clientes:', clientesError);
         }
 
-        if (!clienteData) {
-          setError('Cliente no encontrado');
-          setLoading(false);
-          return;
-        }
+        const clientes = clientesData || [];
+        setClientesAsignados(clientes);
 
-        setClienteAsignado(clienteData);
+        // Use first client as the main one for pedidos view
+        const mainCliente = clientes[0];
+        setClienteAsignado(mainCliente);
 
-        // Fetch pedidos for this cliente
+        // Fetch pedidos for the main cliente
         const { data: pedidosData } = await supabase
           .from('pedidos')
           .select('*')
-          .eq('cliente_id', clienteData.id)
+          .eq('cliente_id', mainCliente.id)
           .order('created_at', { ascending: false });
 
         const allProductoIds = (pedidosData || []).map((p: any) => p.producto_id);
@@ -124,20 +120,36 @@ function MisPedidosContent() {
         if (uniqueProductoIds.length > 0) {
           const { data: productosData } = await supabase
             .from('productos')
-            .select('id, nombre, precio, unidad_medida')
+            .select('id, nombre, precio, unidad_medida, proveedor_id')
             .in('id', uniqueProductoIds);
           productos = productosData || [];
         }
 
+        // Get all unique proveedor IDs
+        const proveedorIds = Array.from(new Set(productos.map(p => p.proveedor_id).filter(Boolean)));
+        
+        let proveedores: any[] = [];
+        if (proveedorIds.length > 0) {
+          const { data: proveedoresData } = await supabase
+            .from('proveedores')
+            .select('id, nombre, url_logo')
+            .in('id', proveedorIds);
+          proveedores = proveedoresData || [];
+        }
+
         const productoMap = new Map((productos || []).map((p: any) => [p.id, p]));
+        const proveedorMap = new Map((proveedores || []).map((p: any) => [p.id, { nombre: p.nombre, logo: p.url_logo }]));
 
         const pedidosWithDetails = (pedidosData || []).map((p: any) => {
           const producto = productoMap.get(p.producto_id);
+          const proveedor = producto ? proveedorMap.get(producto.proveedor_id) : null;
           return {
             ...p,
             producto_nombre: producto?.nombre,
             producto_precio: producto?.precio,
-            unidad_medida: producto?.unidad_medida
+            unidad_medida: producto?.unidad_medida,
+            proveedor_nombre: proveedor?.nombre,
+            proveedor_logo: proveedor?.logo
           };
         });
 
@@ -199,6 +211,14 @@ function MisPedidosContent() {
 
   const ordenes = groupPedidosByOrden(pedidos);
 
+  // Filter ordenes by search query (proveedor or producto)
+  const filteredOrdenes = ordenes.filter(o => {
+    const matchesSearch = !searchQuery || 
+      o.items[0]?.proveedor_nombre?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      o.items.some(item => item.producto_nombre?.toLowerCase().includes(searchQuery.toLowerCase()));
+    return matchesSearch;
+  });
+
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-surface grid-dot">
       <div className="flex flex-col items-center gap-3">
@@ -252,33 +272,60 @@ function MisPedidosContent() {
 
       {/* Main Content */}
       <main className="pt-24 pb-32 px-6 max-w-7xl mx-auto w-full">
-        {/* Client Info Card */}
-        {clienteAsignado && (
-          <div className="mb-6 p-4 border border-outline-variant bg-surface-container rounded-lg">
-            <p className="text-xs text-on-surface-variant uppercase tracking-wide mb-1">Cliente</p>
-            <h2 className="text-lg font-semibold text-on-surface">{clienteAsignado.nombre}</h2>
-            {clienteAsignado.direccion && (
-              <a 
-                href={clienteAsignado.url_maps || '#'}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-on-surface-variant flex items-center gap-1 hover:text-primary mt-1"
-              >
-                <span className="material-symbols-outlined text-sm">location_on</span>
-                {clienteAsignado.direccion}
-              </a>
-            )}
-          </div>
+        {/* Clients Section - Show all assigned clients */}
+        {clientesAsignados.length > 0 && (
+          <section className="mb-8">
+            <h2 className="font-h2 text-h2 text-on-surface mb-4">Mis Establecimientos</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {clientesAsignados.map(cliente => (
+                <a
+                  key={cliente.id}
+                  href={`/${cliente.slug}`}
+                  className="block p-4 border border-outline-variant bg-surface-container rounded-lg hover:border-primary transition-all group"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-on-surface group-hover:text-primary transition-colors">
+                        {cliente.nombre}
+                      </h3>
+                      {cliente.direccion && (
+                        <p className="text-sm text-on-surface-variant mt-1">
+                          {cliente.direccion}
+                        </p>
+                      )}
+                    </div>
+                    <span className="material-symbols-outlined text-primary">arrow_forward</span>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </section>
         )}
+
+        {/* Search Section */}
+        <section className="mb-6">
+          <div className="relative border border-outline-variant bg-surface-container p-1 group focus-within:border-primary-container transition-colors rounded">
+            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+              <span className="material-icons text-outline group-focus-within:text-primary-container">search</span>
+            </div>
+            <input 
+              className="w-full bg-transparent border-none focus:ring-0 pl-12 pr-4 py-3 text-on-surface placeholder:text-outline-variant rounded"
+              placeholder="Buscar por proveedor o producto..." 
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </section>
 
         {/* Orders Section */}
         <section className="space-y-4">
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-h2 text-h2 text-on-surface">Historial de Pedidos</h2>
-            <span className="text-sm text-on-surface-variant">{ordenes.length} orders</span>
+            <span className="text-sm text-on-surface-variant">{filteredOrdenes.length} orders</span>
           </div>
 
-          {ordenes.length === 0 ? (
+          {filteredOrdenes.length === 0 ? (
             <div className="border border-outline-variant bg-surface-container rounded-lg p-12 text-center">
               <span className="material-icons text-6xl text-outline mb-4">inbox</span>
               <h3 className="font-h2 text-h2 mb-2 text-on-surface">Sin pedidos</h3>
@@ -288,13 +335,35 @@ function MisPedidosContent() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {ordenes.map(orden => (
+              {filteredOrdenes.map(orden => (
                 <div 
                   key={orden.orden_id} 
                   className="border border-outline-variant bg-surface-container rounded-lg overflow-hidden hover:border-outline transition-all flex flex-col h-full"
                 >
                   {/* Header */}
                   <div className="p-6 border-b border-outline-variant bg-surface-high/50">
+                    {/* Provider name with logo */}
+                    {(orden.items[0]?.proveedor_nombre || orden.items[0]?.proveedor_logo) && (
+                      <div className="flex items-center gap-3 mb-3">
+                        {orden.items[0]?.proveedor_logo ? (
+                          <div className="w-8 h-8 rounded-lg overflow-hidden bg-surface flex items-center justify-center">
+                            <img 
+                              src={orden.items[0].proveedor_logo} 
+                              alt={orden.items[0].proveedor_nombre}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <span className="material-symbols-outlined text-lg text-primary">store</span>
+                        )}
+                        <span className="text-sm font-semibold text-primary">
+                          {orden.items[0].proveedor_nombre}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex justify-between items-start mb-2">
                       <span className={`px-2 py-1 text-[10px] font-bold rounded uppercase border ${
                         orden.estado === 'pendiente' ? 'bg-status-pendiente-bg text-status-pendiente border-status-pendiente' :
@@ -317,13 +386,15 @@ function MisPedidosContent() {
                   <div className="p-6 flex-grow">
                     <div className="space-y-2">
                       {orden.items.map(item => (
-                        <div key={item.id} className="flex justify-between items-center text-body-sm">
-                          <span className="text-on-surface font-medium">
-                            {item.cantidad}x {item.producto_nombre || 'Producto'}
-                          </span>
-                          <span className="text-on-surface-variant">
-                            {formatCurrency(Number(item.producto_precio) * item.cantidad)}
-                          </span>
+                        <div key={item.id} className="text-body-sm">
+                          <div className="flex justify-between items-center">
+                            <span className="text-on-surface font-medium">
+                              {item.cantidad}x {item.producto_nombre || 'Producto'}
+                            </span>
+                            <span className="text-on-surface-variant">
+                              {formatCurrency(Number(item.producto_precio) * item.cantidad)}
+                            </span>
+                          </div>
                         </div>
                       ))}
                     </div>

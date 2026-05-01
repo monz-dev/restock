@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase, Cliente, Proveedor, Producto } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
+import { supabase, Cliente, Proveedor, Producto, getSession } from '@/lib/supabase/client';
 
 /**
  * ClientePage: Supplier-first ordering flow
  * Styled with Slate Precision design system
  * Flow: Cliente → Proveedores → Expand → Productos → Select → Order
+ * Protected: Only accessible to users with that client assigned
  */
 
 interface ProductoConCantidad extends Producto {
@@ -19,6 +21,7 @@ interface ProveedorConProductos extends Proveedor {
 }
 
 export default function ClientePage({ params }: { params: { slug: string } }) {
+  const router = useRouter();
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [proveedores, setProveedores] = useState<ProveedorConProductos[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +29,7 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
   const [ordering, setOrdering] = useState(false);
   const [success, setSuccess] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   // Sync dark mode class on mount
   useEffect(() => {
@@ -34,7 +38,16 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
 
   useEffect(() => {
     async function fetchData() {
-      // Fetch cliente
+      // 1. Check if user is authenticated
+      const session = await getSession();
+      if (!session?.user) {
+        router.push('/login');
+        return;
+      }
+
+      const userId = (session as any).user?.id;
+
+      // 2. Get the client by slug
       const { data: clienteData, error: clienteError } = await supabase
         .from('clientes')
         .select('*')
@@ -44,6 +57,25 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
 
       if (clienteError || !clienteData) {
         setError('Establecimiento no encontrado');
+        setLoading(false);
+        return;
+      }
+
+      // 3. Verify this client is assigned to the current user
+      const { data: assignment, error: assignmentError } = await supabase
+        .from('usuario_clientes')
+        .select('id')
+        .eq('usuario_id', userId)
+        .eq('cliente_id', clienteData.id)
+        .maybeSingle();
+
+      if (assignmentError) {
+        console.error('Error checking assignment:', assignmentError);
+      }
+
+      // If no assignment found, deny access
+      if (!assignment) {
+        setAccessDenied(true);
         setLoading(false);
         return;
       }
@@ -206,6 +238,26 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-4 border-surface-high border-t-primary-container rounded-full animate-spin" />
           <p className="text-sm text-on-surface-variant">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (accessDenied) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-surface grid-dot">
+        <div className="text-center max-w-md p-6">
+          <span className="material-symbols-outlined text-6xl text-outline mb-4">block</span>
+          <h1 className="text-xl font-semibold mb-2 text-on-surface">Acceso Denegado</h1>
+          <p className="text-on-surface-variant mb-6">
+            Este establecimiento no está asignado a tu cuenta. Contacta al administrador.
+          </p>
+          <button 
+            onClick={() => router.push('/mis-pedidos')}
+            className="px-6 py-2 bg-primary-container text-on-primary-container rounded-lg font-medium"
+          >
+            Volver a Mis Pedidos
+          </button>
         </div>
       </div>
     );
