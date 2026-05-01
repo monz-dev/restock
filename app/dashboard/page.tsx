@@ -40,11 +40,20 @@ function DashboardContent() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   
-  // Admin panel state
+// Admin panel state
   const [adminUsers, setAdminUsers] = useState<any[]>([]);
   const [clientesList, setClientesList] = useState<any[]>([]);
   const [assigningUserId, setAssigningUserId] = useState<string | null>(null);
   const [loadingAdmin, setLoadingAdmin] = useState(false);
+  
+  // Toast notification state
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Show toast notification
+  function showToast(message: string, type: 'success' | 'error' = 'success') {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  }
 
   // Check auth on mount
   useEffect(() => {
@@ -276,14 +285,27 @@ function DashboardContent() {
     router.push('/login');
   }
 
-  // Admin functions
+// Admin functions
   async function loadAdminData() {
     if (!isAdmin) return;
     setLoadingAdmin(true);
     try {
+      // Get user emails from API
+      let userEmails: Record<string, string> = {};
+      try {
+        const response = await fetch('/api/admin/users');
+        const data = await response.json();
+        if (data.users) {
+          data.users.forEach((u: any) => {
+            userEmails[u.id] = u.email;
+          });
+        }
+      } catch (e) {
+        console.error('Error fetching user emails:', e);
+      }
+
       // Get all roles
       const { data: roles } = await supabase.from('roles').select('*');
-      const roleMap = new Map((roles || []).map(r => [r.id, r]));
       
       // Get all usuario_roles with roles info
       const { data: usuarioRoles } = await supabase
@@ -296,13 +318,26 @@ function DashboardContent() {
       // Get all clientes
       const { data: clientes } = await supabase.from('clientes').select('*');
       
-      // Build user list with their roles (we can't get email from auth.users directly)
+// Get all usuario_clientes to show assigned clients
+      const { data: usuarioClientes, error: ucError } = await supabase
+        .from('usuario_clientes')
+        .select('*, cliente:clientes(nombre)');
+      
+      console.log('usuarioClientes:', usuarioClientes, 'error:', ucError);
+      
+      // Build user list with their roles and assigned clients
       setAdminUsers(userIds.map(id => {
         const ur = usuarioRoles?.find(u => u.user_id === id);
+        const userAssignments = (usuarioClientes || []).filter(uc => uc.usuario_id === id);
+        const assignedClients = userAssignments
+          .map(uc => ({ id: uc.cliente_id, nombre: uc.cliente?.nombre }))
+          .filter(c => c.nombre);
         return {
           id,
-          email: 'Usuario registrado',
-          roles: ur?.rol ? [ur.rol] : []
+          email: userEmails[id] || `Usuario ${id.slice(0, 8)}`,
+          roles: ur?.rol ? [ur.rol] : [],
+          assignedClients,
+          assignmentIds: userAssignments.map(a => a.id)
         };
       }));
       setClientesList(clientes || []);
@@ -323,18 +358,39 @@ function DashboardContent() {
         usuario_id: userId,
         cliente_id: clienteId
       });
-      if (error) {
+if (error) {
         if (error.message.includes('duplicate')) {
-          alert('Este cliente ya está asignado a este usuario');
+          showToast('Este cliente ya está asignado a este usuario', 'error');
         } else {
-          alert('Error: ' + error.message);
+          showToast('Error: ' + error.message, 'error');
         }
       } else {
-        alert('Cliente asignado correctamente');
+        showToast('Cliente asignado correctamente', 'success');
         setAssigningUserId(null);
+        // Reload admin data to show updated assignments
+        loadAdminData();
+      }
+} catch (err: any) {
+      showToast('Error al asignar cliente', 'error');
+    }
+  }
+
+  async function unassignClient(assignmentId: string) {
+    if (!assignmentId) return;
+    try {
+      const { error } = await supabase
+        .from('usuario_clientes')
+        .delete()
+        .eq('id', assignmentId);
+      if (error) {
+        showToast('Error: ' + error.message, 'error');
+      } else {
+        showToast('Cliente desasignado correctamente', 'success');
+        // Reload admin data
+        loadAdminData();
       }
     } catch (err: any) {
-      alert('Error al asignar cliente');
+      showToast('Error al desasignar cliente', 'error');
     }
   }
 
@@ -349,8 +405,24 @@ function DashboardContent() {
     );
   }
 
-  return (
+return (
     <div className="min-h-screen bg-surface grid-dot">
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg shadow-lg animate-in slide-in-from-top-2 ${
+          toast.type === 'success' 
+            ? 'bg-green-600 text-white' 
+            : 'bg-error text-on-error'
+        }`}>
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-sm">
+              {toast.type === 'success' ? 'check_circle' : 'error'}
+            </span>
+            {toast.message}
+          </div>
+        </div>
+      )}
+
       {/* TopAppBar */}
       <header className="fixed top-0 left-0 z-50 flex justify-between items-center w-full px-6 h-16 bg-surface-bright border-b border-outline-variant">
         <div className="flex items-center gap-4">
@@ -358,7 +430,7 @@ function DashboardContent() {
             <span className="material-symbols-outlined">menu</span>
           </button>
           <h1 className="font-manrope text-sm font-semibold tracking-tight uppercase text-primary">
-            Pedidos de Clientes
+            Panel de administración
           </h1>
         </div>
         <div className="flex items-center gap-2">
@@ -439,33 +511,62 @@ function DashboardContent() {
               <p className="text-on-surface-variant">Cargando...</p>
             ) : (
               <div className="space-y-4">
-                <p className="text-sm text-on-surface-variant">
-                 Asigna clientes a usuarios registrados.
+<p className="text-sm text-on-surface-variant">
+                  Administración de usuarios y asignación de clientes.
                 </p>
                 
-                {/* User list */}
+{/* User list */}
                 <div className="space-y-2">
                   <h3 className="font-medium text-on-surface">Usuarios</h3>
                   {adminUsers.length === 0 ? (
                     <p className="text-sm text-on-surface-variant">No hay usuarios</p>
                   ) : (
-                    adminUsers.map(user => (
+adminUsers.map(user => (
                       <div 
                         key={user.id} 
-                        className="flex items-center justify-between p-3 bg-surface-low rounded border border-outline-variant"
+                        className="p-3 bg-surface-low rounded border border-outline-variant"
                       >
-                        <div>
-                          <p className="text-on-surface font-medium">{user.email}</p>
-                          <p className="text-xs text-on-surface-variant">
-                            Roles: {user.roles?.map((r: any) => r.nombre).join(', ') || 'Sin rol'}
-                          </p>
+                        {/* Desktop: all in one row | Mobile: stacked */}
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                          {/* Email and Roles */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-on-surface font-medium truncate">{user.email}</p>
+                            <p className="text-xs text-on-surface-variant">
+                              Roles: {user.roles?.map((r: any) => r.nombre).join(', ') || 'Sin rol'}
+                            </p>
+                          </div>
+                          
+                          {/* Assigned Clients - inline on desktop, stacked on mobile */}
+                          <div className="flex flex-wrap gap-1 items-center">
+                            {user.assignedClients && user.assignedClients.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {user.assignedClients.map((client: any, idx: number) => (
+                                  <span 
+                                    key={idx}
+                                    className="inline-flex items-center gap-1 px-2 py-1 bg-surface-high rounded text-xs text-on-surface"
+                                  >
+                                    {client.nombre}
+                                    <button
+                                      onClick={() => unassignClient(user.assignmentIds[idx])}
+                                      className="text-error hover:text-error/80 ml-1 w-5 h-5 flex items-center justify-center rounded hover:bg-error/20 text-base leading-none"
+                                      title="Desasignar"
+                                    >
+                                      ×
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Assign Button */}
+                          <button
+                            onClick={() => setAssigningUserId(user.id)}
+                            className="px-3 py-1 bg-primary-container text-on-primary-container rounded text-sm whitespace-nowrap"
+                          >
+                            Asignar
+                          </button>
                         </div>
-                        <button
-                          onClick={() => setAssigningUserId(user.id)}
-                          className="px-3 py-1 bg-primary-container text-on-primary-container rounded text-sm"
-                        >
-                          Asignar Cliente
-                        </button>
                       </div>
                     ))
                   )}
