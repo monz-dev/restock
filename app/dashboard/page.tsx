@@ -476,12 +476,46 @@ return (
           </div>
         )}
 
-        {/* Search Section */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-gutter mb-section-gap">
-          <div className="lg:col-span-12">
+{/* Status Overview Cards (Bento Style) */}
+        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-gutter mb-section-gap">
+          {/* Total Hoy */}
+          <div className="lg:col-span-4 bg-surface-container border border-outline-variant p-6 rounded-lg">
+            <div className="flex justify-between items-start mb-4">
+              <span className="font-label-caps text-label-caps text-on-surface-variant uppercase">Total Hoy</span>
+              <span className="material-symbols-outlined text-primary">calendar_today</span>
+            </div>
+            <div className="font-h1 text-h1 text-on-surface">124</div>
+            <div className="mt-2 text-body-sm text-primary flex items-center gap-1">
+              <span className="material-symbols-outlined text-sm">trending_up</span>
+              <span>+12% vs ayer</span>
+            </div>
+          </div>
+
+          {/* Pendientes */}
+          <div className="lg:col-span-4 bg-surface-container border border-outline-variant p-6 rounded-lg">
+            <div className="flex justify-between items-start mb-4">
+              <span className="font-label-caps text-label-caps text-on-surface-variant uppercase">Pendientes</span>
+              <span className="material-symbols-outlined text-error">pending_actions</span>
+            </div>
+            <div className="font-h1 text-h1 text-on-surface">18</div>
+            <div className="mt-2 text-body-sm text-on-surface-variant">Requieren atención inmediata</div>
+          </div>
+
+          {/* Eficiencia */}
+          <div className="lg:col-span-4 bg-surface-container border border-outline-variant p-6 rounded-lg border-l-4 border-l-primary-container">
+            <div className="flex justify-between items-start mb-4">
+              <span className="font-label-caps text-label-caps text-on-surface-variant uppercase">Eficiencia</span>
+              <span className="material-symbols-outlined text-primary-container">speed</span>
+            </div>
+            <div className="font-h1 text-h1 text-on-surface">94.2%</div>
+            <div className="mt-2 text-body-sm text-on-surface-variant">Tiempo promedio: 22 min</div>
+          </div>
+
+          {/* Search Bar - Full width below cards */}
+          <div className="md:col-span-2 lg:col-span-12">
             <div className="relative border border-outline-variant bg-surface-container p-1 group focus-within:border-primary-container transition-colors rounded">
               <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                <span className="material-icons text-outline group-focus-within:text-primary-container">search</span>
+                <span className="material-symbols-outlined text-outline group-focus-within:text-primary-container">search</span>
               </div>
               <input 
                 className="w-full bg-transparent border-none focus:ring-0 pl-12 pr-4 py-3 text-on-surface placeholder:text-outline-variant rounded"
