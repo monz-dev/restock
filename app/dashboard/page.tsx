@@ -477,6 +477,9 @@ return (
         )}
 
 {/* Status Overview Cards (Bento Style) */}
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="font-h1 text-h1 text-on-surface">Pedidos</h1>
+          </div>
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-gutter mb-section-gap">
           {/* Total Hoy */}
           <div className="lg:col-span-4 bg-surface-container border border-outline-variant p-6 rounded-lg">
@@ -646,7 +649,7 @@ adminUsers.map(user => (
         {/* Order List Section */}
         <section className="space-y-4">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="font-h2 text-h2 text-on-surface">Pedidos Recientes</h2>
+            <h2 className="font-h2 text-h2 text-on-surface">Historial</h2>
           </div>
 
           {/* Connection Status */}
