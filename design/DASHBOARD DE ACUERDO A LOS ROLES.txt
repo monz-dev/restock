@@ -1,0 +1,17 @@
+DASHBOARD DE ACUERDO A LOS ROLES
+
+OWNER
+- Todas las pantallas
+
+ADMIN
+- Todas las pantallas excepto las financieras
+
+PROVEEDOR
+- Pantalla de Pedidos de sus clientes asignados
+
+CLIENTE
+- Pantalla mis pedidos
+
+REPARTIDOR
+- Pantalla de pedidos a repartir
+
