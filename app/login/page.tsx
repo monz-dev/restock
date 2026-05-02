@@ -51,11 +51,11 @@ function LoginForm() {
     const roles = await getUserRoles();
     const rolNames = roles.map(r => r.nombre);
     
-    // Cliente goes to panel, others go to dashboard
+    // Cliente goes to /cliente/panel, others (admin) go to /admin/panel
     if (rolNames.includes('cliente')) {
       routerInstance.push('/cliente/panel');
     } else {
-      routerInstance.push('/dashboard');
+      routerInstance.push('/admin/panel');
     }
   }
 

@@ -15,7 +15,7 @@ export default function RootPage() {
     async function checkAuth() {
       const session = await getSession();
       if (session) {
-        router.push('/dashboard');
+        router.push('/admin/panel');
       } else {
         router.push('/login');
       }

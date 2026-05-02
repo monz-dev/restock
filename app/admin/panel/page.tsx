@@ -743,7 +743,7 @@ adminUsers.map(user => (
           <span className="material-symbols-outlined">dashboard</span>
           <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">Dashboard</span>
         </a>
-        <a className="flex flex-col items-center justify-center text-primary font-bold active:scale-90 duration-150" href="/dashboard">
+        <a className="flex flex-col items-center justify-center text-primary font-bold active:scale-90 duration-150" href="/admin/panel">
           <span className="material-symbols-outlined">shopping_cart</span>
           <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">Órdenes</span>
         </a>
