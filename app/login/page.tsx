@@ -51,9 +51,9 @@ function LoginForm() {
     const roles = await getUserRoles();
     const rolNames = roles.map(r => r.nombre);
     
-    // Cliente goes to mis-pedidos, others go to dashboard
+    // Cliente goes to panel, others go to dashboard
     if (rolNames.includes('cliente')) {
-      routerInstance.push('/mis-pedidos');
+      routerInstance.push('/cliente/panel');
     } else {
       routerInstance.push('/dashboard');
     }

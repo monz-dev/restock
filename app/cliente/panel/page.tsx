@@ -245,7 +245,7 @@ function MisPedidosContent() {
       <header className="fixed top-0 left-0 z-50 flex justify-between items-center w-full px-6 h-16 bg-surface-bright border-b border-outline-variant">
         <div className="flex items-center gap-4">
           <h1 className="font-manrope text-sm font-semibold tracking-tight uppercase text-primary">
-            Mis Pedidos
+            PANEL
           </h1>
         </div>
         <div className="flex items-center gap-2">
@@ -275,7 +275,7 @@ function MisPedidosContent() {
         {/* Clients Section - Show all assigned clients */}
         {clientesAsignados.length > 0 && (
           <section className="mb-8">
-            <h2 className="font-h2 text-h2 text-on-surface mb-4">Mis Establecimientos</h2>
+            <h2 className="font-h2 text-h2 text-on-surface mb-4">Establecimientos</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {clientesAsignados.map(cliente => (
                 <a
@@ -321,7 +321,7 @@ function MisPedidosContent() {
         {/* Orders Section */}
         <section className="space-y-4">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="font-h2 text-h2 text-on-surface">Historial de Pedidos</h2>
+            <h2 className="font-h2 text-h2 text-on-surface">PEDIDOS</h2>
             <span className="text-sm text-on-surface-variant">{filteredOrdenes.length} orders</span>
           </div>
 

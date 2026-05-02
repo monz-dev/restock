@@ -253,10 +253,10 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
             Este establecimiento no está asignado a tu cuenta. Contacta al administrador.
           </p>
           <button 
-            onClick={() => router.push('/mis-pedidos')}
+            onClick={() => router.push('/cliente/panel')}
             className="px-6 py-2 bg-primary-container text-on-primary-container rounded-lg font-medium"
           >
-            Volver a Mis Pedidos
+            Volver al Panel
           </button>
         </div>
       </div>
