@@ -8,8 +8,8 @@ import { AuthGuard } from '@/components/AuthGuard';
 /**
  * Admin Usuarios Page
  * Styled with Slate Precision design system
- * Dedicated page for user administration - extracted from modal in /admin/pedidos
- * Protegido: requiere permiso 'ver_pedidos'
+ * Dedicated page for user administration
+ * Protegido: requiere permiso 'gestionar_usuarios'
  */
 
 function AdminUsuariosContent() {
@@ -19,7 +19,9 @@ function AdminUsuariosContent() {
   // Admin panel state
   const [adminUsers, setAdminUsers] = useState<any[]>([]);
   const [clientesList, setClientesList] = useState<any[]>([]);
+  const [proveedoresList, setProveedoresList] = useState<any[]>([]);
   const [assigningUserId, setAssigningUserId] = useState<string | null>(null);
+  const [assigningProviderUserId, setAssigningProviderUserId] = useState<string | null>(null);
   const [loadingAdmin, setLoadingAdmin] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   
@@ -86,7 +88,7 @@ function AdminUsuariosContent() {
           });
         }
       } catch (e) {
-        console.error('Error fetching user emails:', e);
+        console.log('Error fetching user emails:', e);
       }
 
       // Get all roles
@@ -98,36 +100,56 @@ function AdminUsuariosContent() {
         .select('*, rol:roles(*)');
       
       // Get unique user_ids
-      const userIds = Array.from(new Set((usuarioRoles || []).map(ur => ur.user_id)));
+      const userIds = Array.from(new Set((usuarioRoles || []).map((ur: any) => String(ur.user_id))));
       
       // Get all clientes
       const { data: clientes } = await supabase.from('clientes').select('*');
       
       // Get all usuario_clientes to show assigned clients
-      const { data: usuarioClientes, error: ucError } = await supabase
+      const { data: usuarioClientes } = await supabase
         .from('usuario_clientes')
         .select('*, cliente:clientes(nombre)');
       
-      console.log('usuarioClientes:', usuarioClientes, 'error:', ucError);
+      // Get all proveedores
+      const { data: proveedores } = await supabase.from('proveedores').select('*');
       
-      // Build user list with their roles and assigned clients
-      setAdminUsers(userIds.map(id => {
-        const ur = usuarioRoles?.find(u => u.user_id === id);
-        const userAssignments = (usuarioClientes || []).filter(uc => uc.usuario_id === id);
-        const assignedClients = userAssignments
-          .map(uc => ({ id: uc.cliente_id, nombre: uc.cliente?.nombre }))
-          .filter(c => c.nombre);
+      // Get all usuario_proveedores to show assigned providers
+      const { data: usuarioProveedores } = await supabase
+        .from('usuario_proveedores')
+        .select('*, proveedor:proveedores(nombre)');
+      
+      // Build user list with their roles, assigned clients and providers
+      const users = userIds.map((id) => {
+        const ur = usuarioRoles?.find((u: any) => String(u.user_id) === id);
+        
+        // Client assignments
+        const userClientAssignments = (usuarioClientes || []).filter((uc: any) => String(uc.usuario_id) === id);
+        const assignedClients = userClientAssignments
+          .map((uc: any) => ({ id: uc.cliente_id, nombre: uc.cliente?.nombre }))
+          .filter((c: any) => c.nombre);
+        
+        // Provider assignments
+        const userProviderAssignments = (usuarioProveedores || []).filter((up: any) => String(up.usuario_id) === id);
+        const assignedProviders = userProviderAssignments
+          .map((up: any) => ({ id: up.proveedor_id, nombre: up.proveedor?.nombre }))
+          .filter((p: any) => p.nombre);
+        
         return {
           id,
-          email: userEmails[id] || `Usuario ${id.slice(0, 8)}`,
+          email: userEmails[id] || `Usuario ${String(id).slice(0, 8)}`,
           roles: ur?.rol ? [ur.rol] : [],
           assignedClients,
-          assignmentIds: userAssignments.map(a => a.id)
+          assignmentIds: userClientAssignments.map((a: any) => a.id),
+          assignedProviders,
+          providerAssignmentIds: userProviderAssignments.map((a: any) => a.id)
         };
-      }));
+      });
+      
+      setAdminUsers(users);
       setClientesList(clientes || []);
+      setProveedoresList(proveedores || []);
     } catch (err) {
-      console.error('Error loading admin data:', err);
+      console.log('Error loading admin data:', err);
     } finally {
       setLoadingAdmin(false);
     }
@@ -152,7 +174,6 @@ function AdminUsuariosContent() {
       } else {
         showToast('Cliente asignado correctamente', 'success');
         setAssigningUserId(null);
-        // Reload admin data to show updated assignments
         loadAdminData();
       }
     } catch (err: any) {
@@ -171,11 +192,54 @@ function AdminUsuariosContent() {
         showToast('Error: ' + error.message, 'error');
       } else {
         showToast('Cliente desasignado correctamente', 'success');
-        // Reload admin data
         loadAdminData();
       }
     } catch (err: any) {
       showToast('Error al desasignar cliente', 'error');
+    }
+  }
+
+  async function assignProviderToUser(userId: string, proveedorId: string) {
+    if (!userId || !proveedorId) {
+      alert('Selecciona un usuario y un proveedor');
+      return;
+    }
+    try {
+      const { error } = await supabase.from('usuario_proveedores').insert({
+        usuario_id: userId,
+        proveedor_id: proveedorId
+      });
+      if (error) {
+        if (error.message.includes('duplicate')) {
+          showToast('Este proveedor ya está asignado a este usuario', 'error');
+        } else {
+          showToast('Error: ' + error.message, 'error');
+        }
+      } else {
+        showToast('Proveedor asignado correctamente', 'success');
+        setAssigningProviderUserId(null);
+        loadAdminData();
+      }
+    } catch (err: any) {
+      showToast('Error al asignar proveedor', 'error');
+    }
+  }
+
+  async function unassignProvider(assignmentId: string) {
+    if (!assignmentId) return;
+    try {
+      const { error } = await supabase
+        .from('usuario_proveedores')
+        .delete()
+        .eq('id', assignmentId);
+      if (error) {
+        showToast('Error: ' + error.message, 'error');
+      } else {
+        showToast('Proveedor desasignado correctamente', 'success');
+        loadAdminData();
+      }
+    } catch (err: any) {
+      showToast('Error al desasignar proveedor', 'error');
     }
   }
 
@@ -218,7 +282,7 @@ function AdminUsuariosContent() {
             <span className="material-symbols-outlined">menu</span>
           </button>
           <h1 className="font-manrope text-sm font-semibold tracking-tight uppercase text-primary">
-            Panel de Administración
+            ADMINISTRACIÓN
           </h1>
         </div>
         <div className="flex items-center gap-2">
@@ -285,47 +349,86 @@ function AdminUsuariosContent() {
                     className="p-3 bg-surface-low rounded border border-outline-variant"
                   >
                     {/* Desktop: all in one row | Mobile: stacked */}
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                      {/* Email and Roles */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-on-surface font-medium truncate">{user.email}</p>
-                        <p className="text-xs text-on-surface-variant">
-                          Roles: {user.roles?.map((r: any) => r.nombre).join(', ') || 'Sin rol'}
-                        </p>
-                      </div>
-                      
-                      {/* Assigned Clients - inline on desktop, stacked on mobile */}
-                      <div className="flex flex-wrap gap-1 items-center">
-                        {user.assignedClients && user.assignedClients.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {user.assignedClients.map((client: any, idx: number) => (
-                              <span 
-                                key={idx}
-                                className="inline-flex items-center gap-1 px-2 py-1 bg-surface-high rounded text-xs text-on-surface"
-                              >
-                                {client.nombre}
-                                <button
-                                  onClick={() => unassignClient(user.assignmentIds[idx])}
-                                  className="text-error hover:text-error/80 ml-1 w-5 h-5 flex items-center justify-center rounded hover:bg-error/20 text-base leading-none"
-                                  title="Desasignar"
-                                >
-                                  ×
-                                </button>
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Assign Button - Comercios */}
-                      <button
-                        onClick={() => setAssigningUserId(user.id)}
-                        className="px-3 py-1 bg-primary-container text-on-primary-container rounded text-sm whitespace-nowrap"
-                      >
-                        Asignar Comercio
-                      </button>
-                    </div>
-                  </div>
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 w-full">
+                       
+                       {/* Left Side: Email, Roles */}
+                       <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
+                         {/* Email and Roles */}
+                         <div className="flex-shrink-0">
+                           <p className="text-on-surface font-medium truncate">{user.email}</p>
+                           <p className="text-xs text-on-surface-variant">
+                             Roles: {user.roles?.map((r: any) => r.nombre).join(', ') || 'Sin rol'}
+                           </p>
+                         </div>                       
+                       </div>
+
+                       {/* Mid Side: Assigned Items */}
+                       <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">     
+                         {/* Assigned Clients and Providers - Inline Tags */}
+                         <div className="flex flex-wrap gap-2 items-center">
+                           {/* Assigned Clients */}
+                           {user.assignedClients && user.assignedClients.length > 0 && (
+                             <div className="flex flex-wrap gap-1 items-center">
+                               
+                               {user.assignedClients.map((client: any, idx: number) => (
+                                 <span 
+                                   key={`client-${idx}`}
+                                   className="inline-flex items-center gap-1 px-2 py-1 bg-surface-high rounded text-xs text-on-surface"
+                                 >
+                                   {client.nombre}
+                                   <button
+                                     onClick={() => unassignClient(user.assignmentIds[idx])}
+                                     className="text-error hover:text-error/80 ml-1 w-5 h-5 flex items-center justify-center rounded hover:bg-error/20 text-base leading-none"
+                                     title="Desasignar comercio"
+                                   >
+                                     ×
+                                   </button>
+                                 </span>
+                               ))}
+                             </div>
+                           )}
+       
+                           {/* Assigned Providers */}
+                           {user.assignedProviders && user.assignedProviders.length > 0 && (
+                             <div className="flex flex-wrap gap-1 items-center">
+                               
+                               {user.assignedProviders.map((provider: any, idx: number) => (
+                                 <span 
+                                   key={`provider-${idx}`}
+                                   className="inline-flex items-center gap-1 px-2 py-1 bg-primary-container/30 rounded text-xs text-on-surface"
+                                 >
+                                   {provider.nombre}
+                                   <button
+                                     onClick={() => unassignProvider(user.providerAssignmentIds[idx])}
+                                     className="text-error hover:text-error/80 ml-1 w-5 h-5 flex items-center justify-center rounded hover:bg-error/20 text-base leading-none"
+                                     title="Desasignar proveedor"
+                                   >
+                                     ×
+                                   </button>
+                                 </span>
+                               ))}
+                             </div>
+                           )}
+                         </div>
+                       </div>
+                       
+                       {/* Right Side: Action Buttons */}
+                       <div className="flex gap-2 flex-shrink-0">
+                         <button
+                           onClick={() => setAssigningUserId(user.id)}
+                           className="px-3 py-1 bg-primary-container text-on-primary-container rounded text-sm whitespace-nowrap"
+                         >
+                           Comercios
+                         </button>
+                         <button
+                           onClick={() => setAssigningProviderUserId(user.id)}
+                           className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded text-sm whitespace-nowrap"
+                         >
+                           Proveedores
+                         </button>
+                       </div>
+                     </div>
+                   </div>
                 ))
               )}
             </div>
@@ -334,10 +437,10 @@ function AdminUsuariosContent() {
             {assigningUserId && (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                 <div className="bg-surface-container p-4 rounded-lg border border-outline-variant max-w-md w-full">
-                  <h3 className="font-semibold text-on-surface mb-4">Asignar Cliente</h3>
+                  <h3 className="font-semibold text-on-surface mb-4">Asignar Comercio</h3>
                   
                   {clientesList.length === 0 ? (
-                    <p className="text-on-surface-variant">No hay clientes</p>
+                    <p className="text-on-surface-variant">No hay comercios</p>
                   ) : (
                     <div className="space-y-2 max-h-60 overflow-y-auto">
                       {clientesList.map(cliente => (
@@ -354,15 +457,50 @@ function AdminUsuariosContent() {
                   )}
                   
                   <button
-                    onClick={() => setAssigningUserId(null)}
-                    className="mt-4 w-full p-2 border border-outline-variant rounded text-on-surface"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            )}
-          </section>
+                     onClick={() => setAssigningUserId(null)}
+                     className="mt-4 w-full p-2 border border-outline-variant rounded text-on-surface"
+                   >
+                     Cancelar
+                   </button>
+                 </div>
+               </div>
+             )}
+
+             {/* Assign provider modal/form */}
+             {assigningProviderUserId && (
+               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                 <div className="bg-surface-container p-4 rounded-lg border border-outline-variant max-w-md w-full">
+                   <h3 className="font-semibold text-on-surface mb-4">Asignar Proveedor</h3>
+                   
+                   {proveedoresList.length === 0 ? (
+                     <p className="text-on-surface-variant">No hay proveedores</p>
+                   ) : (
+                     <div className="space-y-2 max-h-60 overflow-y-auto">
+                       {proveedoresList.map(proveedor => (
+                         <button
+                           key={proveedor.id}
+                           onClick={() => assignProviderToUser(assigningProviderUserId, proveedor.id)}
+                           className="w-full p-3 text-left bg-surface-low hover:bg-surface-high rounded border border-outline-variant"
+                         >
+                           <p className="text-on-surface font-medium">{proveedor.nombre}</p>
+                           {proveedor.slug && (
+                             <p className="text-xs text-on-surface-variant">{proveedor.slug}</p>
+                           )}
+                         </button>
+                       ))}
+                     </div>
+                   )}
+                   
+                   <button
+                     onClick={() => setAssigningProviderUserId(null)}
+                     className="mt-4 w-full p-2 border border-outline-variant rounded text-on-surface"
+                   >
+                     Cancelar
+                   </button>
+                 </div>
+               </div>
+             )}
+           </section>
         )}
       </main>
 
@@ -385,11 +523,11 @@ function AdminUsuariosContent() {
   );
 }
 
-// Wrap con AuthGuard - requiere permiso 'ver_pedidos'
+// Wrap con AuthGuard - requiere permiso 'gestionar_usuarios'
 export default function AdminUsuariosPage() {
   return (
     <AuthGuard 
-      requiredPermiso="ver_pedidos"
+      requiredPermiso="gestionar_usuarios"
       loadingMessage="Cargando administración..."
     >
       <AdminUsuariosContent />
