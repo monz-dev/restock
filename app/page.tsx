@@ -15,7 +15,7 @@ export default function RootPage() {
     async function checkAuth() {
       const session = await getSession();
       if (session) {
-        router.push('/admin/panel');
+        router.push('/admin/pedidos');
       } else {
         router.push('/login');
       }

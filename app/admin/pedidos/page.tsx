@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase, Pedido, getSession, onAuthStateChange, getUserPermisos, signOut, getUserRoles } from '@/lib/supabase/client';
+import { supabase, Pedido, getSession, onAuthStateChange, getUserRoles, signOut } from '@/lib/supabase/client';
 import { AuthGuard } from '@/components/AuthGuard';
 
 /**
@@ -37,14 +37,6 @@ function DashboardContent() {
   const [latestOrden, setLatestOrden] = useState<OrdenGroup | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [darkMode, setDarkMode] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [showAdminPanel, setShowAdminPanel] = useState(false);
-  
-// Admin panel state
-  const [adminUsers, setAdminUsers] = useState<any[]>([]);
-  const [clientesList, setClientesList] = useState<any[]>([]);
-  const [assigningUserId, setAssigningUserId] = useState<string | null>(null);
-  const [loadingAdmin, setLoadingAdmin] = useState(false);
   
   // Toast notification state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -74,25 +66,9 @@ function DashboardContent() {
       if (event === 'SIGNED_OUT') {
         router.push('/login');
       }
-});
+    });
     return () => subscription.unsubscribe();
   }, [router]);
-
-  // Check if user is admin
-  useEffect(() => {
-    async function checkAdmin() {
-      const roles = await getUserRoles();
-      setIsAdmin(roles.some(r => r.nombre === 'admin'));
-    }
-    checkAdmin();
-  }, []);
-
-  // Load admin data when panel opens
-  useEffect(() => {
-    if (isAdmin && showAdminPanel && adminUsers.length === 0) {
-      loadAdminData();
-    }
-  }, [isAdmin, showAdminPanel]);
 
   // Fetch pedidos on mount
   useEffect(() => {
@@ -285,115 +261,6 @@ function DashboardContent() {
     router.push('/login');
   }
 
-// Admin functions
-  async function loadAdminData() {
-    if (!isAdmin) return;
-    setLoadingAdmin(true);
-    try {
-      // Get user emails from API
-      let userEmails: Record<string, string> = {};
-      try {
-        const response = await fetch('/api/admin/users');
-        const data = await response.json();
-        if (data.users) {
-          data.users.forEach((u: any) => {
-            userEmails[u.id] = u.email;
-          });
-        }
-      } catch (e) {
-        console.error('Error fetching user emails:', e);
-      }
-
-      // Get all roles
-      const { data: roles } = await supabase.from('roles').select('*');
-      
-      // Get all usuario_roles with roles info
-      const { data: usuarioRoles } = await supabase
-        .from('usuario_roles')
-        .select('*, rol:roles(*)');
-      
-      // Get unique user_ids
-      const userIds = Array.from(new Set((usuarioRoles || []).map(ur => ur.user_id)));
-      
-      // Get all clientes
-      const { data: clientes } = await supabase.from('clientes').select('*');
-      
-// Get all usuario_clientes to show assigned clients
-      const { data: usuarioClientes, error: ucError } = await supabase
-        .from('usuario_clientes')
-        .select('*, cliente:clientes(nombre)');
-      
-      console.log('usuarioClientes:', usuarioClientes, 'error:', ucError);
-      
-      // Build user list with their roles and assigned clients
-      setAdminUsers(userIds.map(id => {
-        const ur = usuarioRoles?.find(u => u.user_id === id);
-        const userAssignments = (usuarioClientes || []).filter(uc => uc.usuario_id === id);
-        const assignedClients = userAssignments
-          .map(uc => ({ id: uc.cliente_id, nombre: uc.cliente?.nombre }))
-          .filter(c => c.nombre);
-        return {
-          id,
-          email: userEmails[id] || `Usuario ${id.slice(0, 8)}`,
-          roles: ur?.rol ? [ur.rol] : [],
-          assignedClients,
-          assignmentIds: userAssignments.map(a => a.id)
-        };
-      }));
-      setClientesList(clientes || []);
-    } catch (err) {
-      console.error('Error loading admin data:', err);
-    } finally {
-      setLoadingAdmin(false);
-    }
-  }
-
-  async function assignClientToUser(userId: string, clienteId: string) {
-    if (!userId || !clienteId) {
-      alert('Selecciona un usuario y un cliente');
-      return;
-    }
-    try {
-      const { error } = await supabase.from('usuario_clientes').insert({
-        usuario_id: userId,
-        cliente_id: clienteId
-      });
-if (error) {
-        if (error.message.includes('duplicate')) {
-          showToast('Este cliente ya está asignado a este usuario', 'error');
-        } else {
-          showToast('Error: ' + error.message, 'error');
-        }
-      } else {
-        showToast('Cliente asignado correctamente', 'success');
-        setAssigningUserId(null);
-        // Reload admin data to show updated assignments
-        loadAdminData();
-      }
-} catch (err: any) {
-      showToast('Error al asignar cliente', 'error');
-    }
-  }
-
-  async function unassignClient(assignmentId: string) {
-    if (!assignmentId) return;
-    try {
-      const { error } = await supabase
-        .from('usuario_clientes')
-        .delete()
-        .eq('id', assignmentId);
-      if (error) {
-        showToast('Error: ' + error.message, 'error');
-      } else {
-        showToast('Cliente desasignado correctamente', 'success');
-        // Reload admin data
-        loadAdminData();
-      }
-    } catch (err: any) {
-      showToast('Error al desasignar cliente', 'error');
-    }
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface grid-dot">
@@ -405,7 +272,7 @@ if (error) {
     );
   }
 
-return (
+  return (
     <div className="min-h-screen bg-surface grid-dot">
       {/* Toast Notification */}
       {toast && (
@@ -430,7 +297,7 @@ return (
             <span className="material-symbols-outlined">menu</span>
           </button>
           <h1 className="font-manrope text-sm font-semibold tracking-tight uppercase text-primary">
-            Panel de administración
+            Panel de administracion
           </h1>
         </div>
         <div className="flex items-center gap-2">
@@ -476,10 +343,10 @@ return (
           </div>
         )}
 
-{/* Status Overview Cards (Bento Style) */}
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="font-h1 text-h1 text-on-surface">Pedidos</h1>
-          </div>
+        {/* Status Overview Cards (Bento Style) */}
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="font-h1 text-h1 text-on-surface">Pedidos</h1>
+        </div>
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-gutter mb-section-gap">
           {/* Total Hoy */}
           <div className="lg:col-span-4 bg-surface-container border border-outline-variant p-6 rounded-lg">
@@ -530,121 +397,6 @@ return (
             </div>
           </div>
         </section>
-
-        {/* Admin Panel - Solo visible para admin */}
-        {isAdmin && showAdminPanel && (
-          <section className="mb-8 p-4 border-2 border-primary-container bg-surface-container rounded-lg">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-lg text-primary">Panel de Administración</h2>
-              <button 
-                onClick={() => setShowAdminPanel(false)}
-                className="p-1 hover:bg-surface-high rounded"
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-            
-            {loadingAdmin ? (
-              <p className="text-on-surface-variant">Cargando...</p>
-            ) : (
-              <div className="space-y-4">
-<p className="text-sm text-on-surface-variant">
-                  Administración de usuarios y asignación de clientes.
-                </p>
-                
-{/* User list */}
-                <div className="space-y-2">
-                  <h3 className="font-medium text-on-surface">Usuarios</h3>
-                  {adminUsers.length === 0 ? (
-                    <p className="text-sm text-on-surface-variant">No hay usuarios</p>
-                  ) : (
-adminUsers.map(user => (
-                      <div 
-                        key={user.id} 
-                        className="p-3 bg-surface-low rounded border border-outline-variant"
-                      >
-                        {/* Desktop: all in one row | Mobile: stacked */}
-                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                          {/* Email and Roles */}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-on-surface font-medium truncate">{user.email}</p>
-                            <p className="text-xs text-on-surface-variant">
-                              Roles: {user.roles?.map((r: any) => r.nombre).join(', ') || 'Sin rol'}
-                            </p>
-                          </div>
-                          
-                          {/* Assigned Clients - inline on desktop, stacked on mobile */}
-                          <div className="flex flex-wrap gap-1 items-center">
-                            {user.assignedClients && user.assignedClients.length > 0 && (
-                              <div className="flex flex-wrap gap-1">
-                                {user.assignedClients.map((client: any, idx: number) => (
-                                  <span 
-                                    key={idx}
-                                    className="inline-flex items-center gap-1 px-2 py-1 bg-surface-high rounded text-xs text-on-surface"
-                                  >
-                                    {client.nombre}
-                                    <button
-                                      onClick={() => unassignClient(user.assignmentIds[idx])}
-                                      className="text-error hover:text-error/80 ml-1 w-5 h-5 flex items-center justify-center rounded hover:bg-error/20 text-base leading-none"
-                                      title="Desasignar"
-                                    >
-                                      ×
-                                    </button>
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          
-                          {/* Assign Button */}
-                          <button
-                            onClick={() => setAssigningUserId(user.id)}
-                            className="px-3 py-1 bg-primary-container text-on-primary-container rounded text-sm whitespace-nowrap"
-                          >
-                            Asignar
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                {/* Assign client modal/form */}
-                {assigningUserId && (
-                  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-surface-container p-4 rounded-lg border border-outline-variant max-w-md w-full">
-                      <h3 className="font-semibold text-on-surface mb-4">Asignar Cliente</h3>
-                      
-                      {clientesList.length === 0 ? (
-                        <p className="text-on-surface-variant">No hay clientes</p>
-                      ) : (
-                        <div className="space-y-2 max-h-60 overflow-y-auto">
-                          {clientesList.map(cliente => (
-                            <button
-                              key={cliente.id}
-                              onClick={() => assignClientToUser(assigningUserId, cliente.id)}
-                              className="w-full p-3 text-left bg-surface-low hover:bg-surface-high rounded border border-outline-variant"
-                            >
-                              <p className="text-on-surface font-medium">{cliente.nombre}</p>
-                              <p className="text-xs text-on-surface-variant">{cliente.direccion}</p>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      
-                      <button
-                        onClick={() => setAssigningUserId(null)}
-                        className="mt-4 w-full p-2 border border-outline-variant rounded text-on-surface"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </section>
-        )}
 
         {/* Order List Section */}
         <section className="space-y-4">
@@ -743,28 +495,14 @@ adminUsers.map(user => (
           <span className="material-symbols-outlined">dashboard</span>
           <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">Dashboard</span>
         </a>
-        <a className="flex flex-col items-center justify-center text-primary font-bold active:scale-90 duration-150" href="/admin/panel">
+        <a className="flex flex-col items-center justify-center text-primary font-bold active:scale-90 duration-150" href="/admin/pedidos">
           <span className="material-symbols-outlined">shopping_cart</span>
-          <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">Órdenes</span>
+          <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">Pedidos</span>
         </a>
-        <a className="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-150" href="/clientes">
+        <a className="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-150" href="/admin/usuarios">
           <span className="material-symbols-outlined">groups</span>
-          <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">Clientes</span>
+          <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">Usuarios</span>
         </a>
-        {isAdmin ? (
-          <button 
-            onClick={() => setShowAdminPanel(!showAdminPanel)}
-            className={`flex flex-col items-center justify-center transition-all active:scale-90 duration-150 ${showAdminPanel ? 'text-primary' : 'text-on-surface-variant'}`}
-          >
-            <span className="material-symbols-outlined">admin_panel_settings</span>
-            <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">Admin</span>
-          </button>
-        ) : (
-          <a className="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-150" href="#">
-            <span className="material-symbols-outlined">settings</span>
-            <span className="font-manrope text-[10px] font-medium tracking-wide uppercase">Ajustes</span>
-          </a>
-        )}
       </nav>
     </div>
   );
