@@ -22,6 +22,8 @@ function AdminUsuariosContent() {
   const [proveedoresList, setProveedoresList] = useState<any[]>([]);
   const [assigningUserId, setAssigningUserId] = useState<string | null>(null);
   const [assigningProviderUserId, setAssigningProviderUserId] = useState<string | null>(null);
+  const [rolesList, setRolesList] = useState<any[]>([]);
+  const [assigningRoleUserId, setAssigningRoleUserId] = useState<string | null>(null);
   const [loadingAdmin, setLoadingAdmin] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   
@@ -148,6 +150,9 @@ function AdminUsuariosContent() {
       setAdminUsers(users);
       setClientesList(clientes || []);
       setProveedoresList(proveedores || []);
+      // Get all roles and filter out 'owner' role
+      const filteredRoles = (roles || []).filter(r => r.nombre !== 'owner');
+      setRolesList(filteredRoles);
     } catch (err) {
       console.log('Error loading admin data:', err);
     } finally {
@@ -240,6 +245,42 @@ function AdminUsuariosContent() {
       }
     } catch (err: any) {
       showToast('Error al desasignar proveedor', 'error');
+    }
+  }
+
+  async function assignRoleToUser(userId: string, roleId: string) {
+    if (!userId || !roleId) {
+      alert('Selecciona un usuario y un rol');
+      return;
+    }
+
+    // Safety check: prevent assigning owner role
+    const targetRole = rolesList.find(r => r.id === roleId);
+    if (targetRole?.nombre === 'owner') {
+      showToast('El rol de owner no se puede asignar desde la aplicación', 'error');
+      return;
+    }
+
+    try {
+      // ONLY INSERT - no delete of previous roles
+      const { error } = await supabase.from('usuario_roles').insert({
+        user_id: userId,
+        rol_id: roleId
+      });
+
+      if (error) {
+        if (error.message.includes('duplicate')) {
+          showToast('Este rol ya está asignado a este usuario', 'error');
+        } else {
+          showToast(`Error al asignar rol: ${error.message}`, 'error');
+        }
+      } else {
+        showToast('Rol asignado correctamente (sin eliminar anteriores)', 'success');
+        setAssigningRoleUserId(null);
+        loadAdminData();
+      }
+    } catch (err: any) {
+      showToast(`Error al asignar rol: ${err.message}`, 'error');
     }
   }
 
@@ -412,21 +453,27 @@ function AdminUsuariosContent() {
                          </div>
                        </div>
                        
-                       {/* Right Side: Action Buttons */}
-                       <div className="flex gap-2 flex-shrink-0">
-                         <button
-                           onClick={() => setAssigningUserId(user.id)}
-                           className="px-3 py-1 bg-primary-container text-on-primary-container rounded text-sm whitespace-nowrap"
-                         >
-                           Comercios
-                         </button>
-                         <button
-                           onClick={() => setAssigningProviderUserId(user.id)}
-                           className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded text-sm whitespace-nowrap"
-                         >
-                           Proveedores
-                         </button>
-                       </div>
+                        {/* Right Side: Action Buttons */}
+                        <div className="flex gap-2 flex-shrink-0">
+                          <button
+                            onClick={() => setAssigningUserId(user.id)}
+                            className="px-3 py-1 bg-primary-container text-on-primary-container rounded text-sm whitespace-nowrap"
+                          >
+                            Comercios
+                          </button>
+                          <button
+                            onClick={() => setAssigningProviderUserId(user.id)}
+                            className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded text-sm whitespace-nowrap"
+                          >
+                            Proveedores
+                          </button>
+                          <button
+                            onClick={() => setAssigningRoleUserId(user.id)}
+                            className="px-3 py-1 bg-tertiary-container text-on-tertiary-container rounded text-sm whitespace-nowrap"
+                          >
+                            Cambiar Rol
+                          </button>
+                        </div>
                      </div>
                    </div>
                 ))
@@ -499,8 +546,43 @@ function AdminUsuariosContent() {
                    </button>
                  </div>
                </div>
-             )}
-           </section>
+              )}
+
+              {/* Assign role modal */}
+              {assigningRoleUserId && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                  <div className="bg-surface-container p-4 rounded-lg border border-outline-variant max-w-md w-full">
+                    <h3 className="font-semibold text-on-surface mb-4">Asignar Rol</h3>
+                    
+                    {rolesList.length === 0 ? (
+                      <p className="text-on-surface-variant">No hay roles</p>
+                    ) : (
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {rolesList.map(rol => (
+                          <button
+                            key={rol.id}
+                            onClick={() => assignRoleToUser(assigningRoleUserId, rol.id)}
+                            className="w-full p-3 text-left bg-surface-low hover:bg-surface-high rounded border border-outline-variant"
+                          >
+                            <p className="text-on-surface font-medium">{rol.nombre}</p>
+                            {rol.descripcion && (
+                              <p className="text-xs text-on-surface-variant">{rol.descripcion}</p>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    
+                    <button
+                      onClick={() => setAssigningRoleUserId(null)}
+                      className="mt-4 w-full p-2 border border-outline-variant rounded text-on-surface"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
         )}
       </main>
 
